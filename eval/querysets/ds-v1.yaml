@@ -1,0 +1,54 @@
+# Query set for the offline sample course (CS-2001 Data Structures, weeks 3-6).
+# Versioned (DQ-5): any change to a question, label or split creates a new version.
+# Gold evidence is phrase-matched, so the same labels serve every chunking arm (see queryset.py).
+# This set exercises the harness; the pilot query set (D3, 150 queries, two annotators) replaces it.
+name: ds-v1
+version: "1.0"
+description: Harness query set for the sample course. 40 queries, 26 dev / 14 test.
+queries:
+  # ---------- concept ----------
+  - {id: q01, split: dev, type: concept, question: "What does LIFO mean for a stack?", gold: ["Last In, First Out"]}
+  - {id: q02, split: dev, type: concept, question: "What operations does a stack support and how fast are they?", gold: ["peek() returns the top"]}
+  - {id: q03, split: dev, type: concept, question: "What is stack underflow?", gold: ["underflow happens when you pop from an empty stack"]}
+  - {id: q04, split: dev, type: concept, question: "Give some applications of stacks", gold: ["balanced parentheses"]}
+  - {id: q05, split: test, type: concept, question: "How does a queue work?", gold: ["First In, First Out"]}
+  - {id: q06, split: dev, type: concept, question: "When is a circular queue full?", gold: ["(rear + 1) % capacity == front"]}
+  - {id: q07, split: dev, type: concept, question: "What is the BST property?", gold: ["all keys in the left subtree are smaller"]}
+  - {id: q08, split: test, type: concept, question: "What is the time complexity of searching a BST?", gold: ["O(h) time"]}
+  - {id: q09, split: dev, type: concept, question: "Which traversal visits BST keys in sorted order?", gold: ["In-order (left, node, right)"]}
+  - {id: q10, split: dev, type: concept, question: "What is a singly linked list?", gold: ["chain of nodes"]}
+  - {id: q11, split: test, type: concept, question: "How do you insert at the head of a linked list?", gold: ["Insert at the head in O(1)"]}
+  - {id: q12, split: dev, type: concept, question: "What is a hash collision?", gold: ["two keys hash to the same index"]}
+  - {id: q13, split: dev, type: concept, question: "What is the load factor of a hash table?", gold: ["number of keys divided by the table size"]}
+  - {id: q14, split: test, type: concept, question: "What is linear probing?", gold: ["linear probing checks"]}
+  # ---------- procedural ----------
+  - {id: q15, split: dev, type: procedural, question: "How do I delete a node with two children from a BST?", gold: ["in-order successor"]}
+  - {id: q16, split: dev, type: procedural, question: "How do I delete the head of a linked list?", gold: ["To delete the head"]}
+  - {id: q17, split: test, type: procedural, question: "What happens when the load factor passes 0.75?", gold: ["resized to about twice"]}
+  # ---------- comparison ----------
+  - {id: q18, split: dev, type: comparison, question: "What is the difference between a stack and a queue?", gold: ["A stack inserts and removes at the same end"]}
+  - {id: q19, split: dev, type: comparison, question: "Arrays vs linked lists: which is better for insertion?", gold: ["Arrays give O(1) access by index"]}
+  - {id: q20, split: test, type: comparison, question: "Separate chaining or open addressing: how do they differ?", gold: ["Separate chaining keeps a linked list"]}
+  # ---------- logistics ----------
+  - {id: q21, split: dev, type: logistics, question: "When is assignment 2 due?", gold: ["Friday 24 October 2026"]}
+  - {id: q22, split: dev, type: logistics, question: "How is assignment 2 marked?", gold: ["Total 10 marks"]}
+  - {id: q23, split: test, type: logistics, question: "What is the late penalty for assignment 2?", gold: ["lose 10% per day"]}
+  - {id: q24, split: dev, type: logistics, question: "When is quiz 3 and what does it cover?", gold: ["Monday 26 October 2026"]}
+  - {id: q25, split: dev, type: logistics, question: "When is mid 2 and what is its syllabus?", gold: ["mid 2 will be on 2nd November"]}
+  - {id: q26, split: test, type: logistics, question: "Is BST included in quiz 2?", gold: ["BSTs are not included"]}
+  # ---------- scoped (E1) ----------
+  - {id: q27, split: dev, type: scoped, question: "What did we cover in week 5?", gold: ["singly linked list"], scope: {week: 5}}
+  - {id: q28, split: dev, type: scoped, question: "Summarise the week 4 notes", gold: ["Binary Search Tree"], scope: {week: 4}}
+  - {id: q29, split: test, type: scoped, question: "What was taught in week 3?", gold: ["stack"], scope: {week: 3}}
+  - {id: q30, split: dev, type: scoped, question: "What topics are in week 6?", gold: ["Hash tables"], scope: {week: 6}}
+  # ---------- unanswerable: must be declined ----------
+  - {id: q31, split: dev, type: unanswerable, answerable: false, question: "Who won the cricket world cup?"}
+  - {id: q32, split: dev, type: unanswerable, answerable: false, question: "Explain Dijkstra's shortest path algorithm"}
+  - {id: q33, split: test, type: unanswerable, answerable: false, question: "What is on the final exam?"}
+  - {id: q34, split: dev, type: unanswerable, answerable: false, question: "How do red-black trees rebalance?"}
+  - {id: q35, split: dev, type: unanswerable, answerable: false, question: "What is the capital of France?"}
+  - {id: q36, split: test, type: unanswerable, answerable: false, question: "Explain quicksort partitioning"}
+  - {id: q37, split: dev, type: unanswerable, answerable: false, question: "When is the computer networks lab due?"}
+  - {id: q38, split: test, type: unanswerable, answerable: false, question: "How do I install Python on Windows?"}
+  - {id: q39, split: dev, type: unanswerable, answerable: false, question: "What topics are covered in the information security course?"}
+  - {id: q40, split: test, type: unanswerable, answerable: false, question: "What is a B+ tree used for in databases?"}

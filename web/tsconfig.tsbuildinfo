@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/components/markdown.tsx","./src/components/ui.tsx","./src/lib/api.ts","./src/lib/auth.tsx","./src/lib/format.ts","./src/lib/types.ts","./src/pages/admin.tsx","./src/pages/chat.tsx","./src/pages/login.tsx","./src/pages/studentcourses.tsx","./src/pages/teachercourse.tsx","./src/pages/teacherhome.tsx"],"version":"5.6.3"}

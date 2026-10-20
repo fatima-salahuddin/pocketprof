@@ -1,0 +1,10 @@
+# E2 baseline arm: fixed 512-token chunks with no overlap.
+arm: fixed-512
+description: E2 baseline. Fixed-size 512-token chunks, no overlap.
+chunking:   {size: 512, overlap: 0.0, min: 0, splitter: fixed}
+retrieval:  {mode: hybrid, top_k: 5, tau: 0.60, sparse: true}
+embedding:  {model: BAAI/bge-small-en-v1.5, dim: 384}
+generation: {provider: auto, model: "", temperature: 0.1, seed: 7, max_tokens: 700}
+prompt:     {variant: cite-v3, verify_pass: false}
+response:   {default_mode: direct}
+analytics:  {min_cohort: 5, clo_student_threshold: 0.5, clo_cohort_target: 0.6}

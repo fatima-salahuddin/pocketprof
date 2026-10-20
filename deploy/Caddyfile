@@ -1,0 +1,5 @@
+# TLS termination for the pilot (NFR-09). Set PUBLIC_HOST to the server's DNS name.
+{$PUBLIC_HOST} {
+    encode gzip
+    reverse_proxy web:80
+}

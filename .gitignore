@@ -1,0 +1,18 @@
+# secrets and local state (NFR-10)
+.env
+*.env.local
+data/
+# python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+# web
+web/node_modules/
+web/dist/
+# editors
+.vscode/
+.idea/
+backups/
+.claude/

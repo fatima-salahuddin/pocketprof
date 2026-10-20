@@ -1,0 +1,110 @@
+# PocketProf: the whole system from one Compose file on one machine (C-6, SDS 9 and Appendix C).
+#
+#   cp .env.example .env              # fill in secrets, Google client and generation arm
+#   docker compose up -d --build      # web on http://localhost, API docs on /api/docs
+#   docker compose --profile private up -d     # + local Ollama: real student data never leaves the machine (C-5)
+#   docker compose --profile pilot up -d       # + Caddy TLS proxy (NFR-09)
+name: pocketprof
+
+x-app: &app
+  build: { context: ., dockerfile: deploy/api.Dockerfile }
+  image: pocketprof-api
+  env_file: .env
+  environment:
+    ENV: ${ENV:-demo}
+    DATABASE_URL: postgresql+psycopg://pocketprof:${POSTGRES_PASSWORD:-pocketprof}@postgres:5432/pocketprof
+    QDRANT_URL: http://qdrant:6333
+    PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
+    API_URL: ${PUBLIC_URL:-http://localhost}
+    MIGRATE_ON_START: "false"
+  volumes:
+    - app_data:/data
+  restart: unless-stopped
+
+services:
+  migrate:
+    <<: *app
+    command: ["python", "-m", "pocketprof.db.migrate"]
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *app
+    environment:
+      ENV: ${ENV:-demo}
+      DATABASE_URL: postgresql+psycopg://pocketprof:${POSTGRES_PASSWORD:-pocketprof}@postgres:5432/pocketprof
+      QDRANT_URL: http://qdrant:6333
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
+      API_URL: ${PUBLIC_URL:-http://localhost}
+      MIGRATE_ON_START: "false"
+      RUN_SCHEDULER: "false"            # the scheduler service owns automatic sync
+    expose: ["8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      qdrant: { condition: service_started }
+
+  scheduler:
+    <<: *app
+    command: ["python", "-m", "pocketprof.scheduler"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      qdrant: { condition: service_started }
+
+  web:
+    build: { context: ., dockerfile: deploy/web.Dockerfile }
+    image: pocketprof-web
+    ports: ["${WEB_PORT:-80}:80"]
+    depends_on: [api]
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pocketprof
+      POSTGRES_USER: pocketprof
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pocketprof}
+    volumes: [pg_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pocketprof -d pocketprof"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    volumes: [qdrant_data:/qdrant/storage]
+    expose: ["6333", "6334"]
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.4.7
+    profiles: [private]
+    volumes: [ollama_models:/root/.ollama]
+    expose: ["11434"]
+    restart: unless-stopped
+    # GPU: uncomment on a machine with the NVIDIA container toolkit
+    # deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }] } } }
+
+  proxy:
+    image: caddy:2.8-alpine
+    profiles: [pilot]
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+    ports: ["443:443", "80:80"]
+    volumes: [./deploy/Caddyfile:/etc/caddy/Caddyfile:ro, caddy_data:/data]
+    depends_on: [web]
+    restart: unless-stopped
+
+  backup:
+    # Nightly logical backup of PostgreSQL (NFR-23); Qdrant snapshots can be rebuilt from the ledger.
+    image: postgres:16-alpine
+    profiles: [pilot]
+    environment: { PGPASSWORD: "${POSTGRES_PASSWORD:-pocketprof}" }
+    volumes: [./backups:/backups]
+    entrypoint: ["/bin/sh", "-c", "while true; do pg_dump -h postgres -U pocketprof -Fc pocketprof > /backups/pocketprof-$$(date +%F).dump; find /backups -name '*.dump' -mtime +14 -delete; sleep 86400; done"]
+    depends_on: [postgres]
+    restart: unless-stopped
+
+volumes: { pg_data: {}, qdrant_data: {}, ollama_models: {}, app_data: {}, caddy_data: {} }

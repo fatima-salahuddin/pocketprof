@@ -1,0 +1,10 @@
+# Default arm for release 1.0 (SDS Appendix B). Values marked "E<n>" are settled by that experiment.
+arm: shipped-v1
+description: Structure-aware 384-token chunks, hybrid retrieval with scope filter, citing prompt.
+chunking:   {size: 384, overlap: 0.15, min: 128, splitter: structure_aware}   # E2
+retrieval:  {mode: hybrid, top_k: 5, tau: 0.60, sparse: true}                 # E1; tau calibrated in E3
+embedding:  {model: BAAI/bge-small-en-v1.5, dim: 384}                         # bge-base-en-v1.5 (768) target
+generation: {provider: auto, model: "", temperature: 0.1, seed: 7, max_tokens: 700}
+prompt:     {variant: cite-v3, verify_pass: false}                            # E3
+response:   {default_mode: direct}                                            # E6
+analytics:  {min_cohort: 5, clo_student_threshold: 0.5, clo_cohort_target: 0.6}
