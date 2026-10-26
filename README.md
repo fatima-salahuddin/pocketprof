@@ -1,4 +1,30 @@
-# PocketProf
+<h1>PocketProf</h1>
+
+<p><b>An AI course assistant that only answers from your teacher's own material, and says so when it can't.</b></p>
+
+<p>
+  <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Qdrant-DC244C?style=flat-square" alt="Qdrant">
+  <img src="https://img.shields.io/badge/SQLAlchemy-D71F00?style=flat-square&logo=sqlalchemy&logoColor=white" alt="SQLAlchemy">
+  <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose">
+  <img src="https://img.shields.io/badge/tests-59-0D9488?style=flat-square" alt="59 tests">
+  <img src="https://img.shields.io/badge/FAST--NUCES-FYP_2026-2563EB?style=flat-square" alt="FAST-NUCES FYP 2026">
+</p>
+
+<table>
+  <tr>
+    <td align="center"><b>97.5%</b><br><sub>answer-or-decline<br>accuracy</sub></td>
+    <td align="center"><b>0%</b><br><sub>unsupported answers<br>(target 5% or less)</sub></td>
+    <td align="center"><b>1.0</b><br><sub>citation presence<br>and support</sub></td>
+    <td align="center"><b>0.5 s</b><br><sub>to re-check an unchanged<br>class (vs 23 s first read)</sub></td>
+    <td align="center"><b>1.3 s</b><br><sub>median answer<br>latency</sub></td>
+  </tr>
+</table>
+
+<sub>Baseline on the sample class, 40-query set <code>ds-v1</code>, 21 Oct 2026. Details under <a href="#tests-and-evaluation">Tests and evaluation</a>.</sub>
 
 A teacher-specific, dynamically updated AI course assistant. Students ask questions about a class and get
 answers drawn **only** from that class's own material on Google Classroom (slides, notes, assignment briefs,
