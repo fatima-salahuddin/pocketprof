@@ -13,6 +13,7 @@ from .llm import ChatTurn
 
 REFUSAL_SENTINEL = "NOT_IN_MATERIAL"
 PROMPT_VERSION = "cite-v3"
+MODES_VERSION = "modes-v2"   # M7: response-mode instructions, versioned apart from the grounding rules
 
 
 @dataclass
@@ -40,9 +41,16 @@ part the class material does not cover.
 
 MODES = {
     "direct": "MODE: direct. Answer the question fully.",
-    "scaffolded": ("MODE: scaffolded. Do not give the full answer to a worked problem straight away. Explain the "
-                   "idea behind the first step, ask the student to attempt it, and offer a hint. Give the "
-                   "complete answer only if the student asks for it."),
+    # modes-v2 (M7): v1 leaked the result in 3 of 6 worked problems on modes-v1 (E6 run, 10 Nov 2026).
+    "scaffolded": ("MODE: scaffolded. The student wants to work this out themselves, so guide them without "
+                   "solving it:\n"
+                   "1. Explain the rule or idea from the SOURCES that the first step needs, with citations.\n"
+                   "2. Ask the student to apply it to their own problem and say what they get.\n"
+                   "3. Offer one hint.\n"
+                   "Do NOT state the final answer, the resulting value, the completed steps or the finished "
+                   "list for the student's specific problem, even if it seems obvious, and do not bold or hint at "
+                   "the result. The student can ask for the full answer with one click. If the question is a "
+                   "plain fact with nothing to work out (a date, a definition, a deadline), answer it directly."),
     # M7 (SRS UC-02 6a): the full answer is one click away after a scaffolded reply.
     "reveal": ("MODE: direct. The student has worked through this question with hints and now asks for the "
                "complete answer. Give it in full, step by step, citing every step."),
@@ -87,12 +95,18 @@ def format_payload_sources(payloads: list[dict]) -> str:
                        for i, p in enumerate(payloads, start=1))
 
 
-def user_turn(question: str, hits: list[Hit], scope_label: str | None) -> str:
+# modes-v2 (M7): the model reads the user turn last, so a scaffolded request repeats the mode there.
+SCAFFOLD_REMINDER = ("This is a step-by-step request: explain the rule and ask the student to apply it. Do not "
+                     "state the final result for their specific problem.")
+
+
+def user_turn(question: str, hits: list[Hit], scope_label: str | None, mode: str = "direct") -> str:
     scope = f"The student's question is about {scope_label}; the SOURCES are limited to it.\n\n" \
         if scope_label else ""
+    reminder = f" {SCAFFOLD_REMINDER}" if mode == "scaffolded" else ""
     return (f"SOURCES\n{format_sources(hits)}\n\n{scope}QUESTION\n{question}\n\n"
             f"Answer from the SOURCES only and cite each fact as [S1], [S2] and so on. "
-            f"If they do not answer the question, reply exactly {REFUSAL_SENTINEL}.")
+            f"If they do not answer the question, reply exactly {REFUSAL_SENTINEL}.{reminder}")
 
 
 def build(course: CourseContext, mode: str, history: list[ChatTurn], question: str, hits: list[Hit],
@@ -101,7 +115,7 @@ def build(course: CourseContext, mode: str, history: list[ChatTurn], question: s
     messages = [t for t in history[-4:] if t.content.strip()]
     while messages and messages[0].role != "user":  # the first message must be the user's
         messages.pop(0)
-    messages.append(ChatTurn("user", user_turn(question, hits, scope_label)))
+    messages.append(ChatTurn("user", user_turn(question, hits, scope_label, mode)))
     return system_prompt(course, mode, brief=brief, style_block=style_block), messages
 
 

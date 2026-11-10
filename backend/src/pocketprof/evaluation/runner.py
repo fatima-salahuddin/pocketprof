@@ -18,7 +18,7 @@ from ..core.security import now_utc
 from ..db import session_scope
 from ..db.models import Course, ExperimentRun, User
 from ..generation.llm import describe
-from ..generation.prompts import PROMPT_VERSION
+from ..generation.prompts import MODES_VERSION, PROMPT_VERSION
 from ..generation.responder import ChatResponder
 from ..ingestion import calendar
 from ..retrieval import scoper
@@ -95,7 +95,7 @@ def create_run(course_id: int, query_set: str, split: str, arm_name: str, experi
         er = ExperimentRun(experiment=experiment, arm=arm.arm, config_hash=arm.config_hash, course_id=course_id,
                            query_set=qs.name, query_set_version=qs.version, split=split,
                            model=describe(arm.generation) if generate else "retrieval-only",
-                           prompt_version=PROMPT_VERSION, index_version=arm.index_version)
+                           prompt_version=f"{PROMPT_VERSION}+{MODES_VERSION}", index_version=arm.index_version)
         db.add(er)
         db.flush()
         return er.id

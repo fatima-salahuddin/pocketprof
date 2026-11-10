@@ -6,12 +6,13 @@
 # measured before every demonstration and treated as a defect"). Phrase matching is a screen, not a verdict:
 # a random sample of flagged and unflagged answers is checked by hand, as for the other automatic scores.
 name: modes-v1
-version: "1.0"
+version: "1.1"   # 1.1: w01's phrases name the computed result; 1.0 also matched the rule text itself
 description: Worked problems with solution phrases, for E6 (scaffolded vs direct) and solution-leak rate. 8 queries.
 queries:
   - {id: w01, split: dev, type: worked, gold: ["(rear + 1) % capacity == front"],
      question: "A circular queue has capacity 5, front = 2 and rear = 1. Is it full? Work it out.",
-     solution: ["queue is full", "so it is full", "it is full", "yes, it is full", "the queue is full"]}
+     solution: ["(1 + 1) % 5 = 2", "(1+1)%5 = 2", "(1 + 1) % 5 is 2", "2 == 2", "equals front, so", "so it is full",
+                "yes, it is full", "yes, the queue is full", "so the queue is full"]}
   - {id: w02, split: dev, type: worked, gold: ["in-order successor"],
      question: "I delete key 50 from a BST. 50 has two children, and the smallest key in its right subtree is 60. What replaces 50?",
      solution: ["replace 50 with 60", "replaced by 60", "60 replaces 50", "60 takes its place", "becomes 60", "with 60"]}
