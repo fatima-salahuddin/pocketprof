@@ -433,3 +433,7 @@ label.check { flex-direction: row !important; align-items: center; gap: 8px; }
 .exemplar-list blockquote { margin: 4px 0 8px; padding-left: 12px; border-left: 3px solid var(--green-tint); white-space: pre-wrap; }
 .style-preview { white-space: pre-wrap; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md);
   padding: 12px; font: .85rem/1.5 var(--mono); max-height: 420px; overflow: auto; }
+@media (max-width: 640px) {
+  /* The header stacks vertically here, where a flex-basis would become a height (an empty gap). */
+  .conv-head > *, .conv-head > div:nth-child(n) { flex: 0 0 auto; }
+}
