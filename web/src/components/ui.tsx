@@ -20,7 +20,8 @@ export function TopBar({ children }: { children?: ReactNode }) {
       <Brand />
       <nav className="topnav" aria-label="Main">
         {user?.role === "student" && <NavLink to="/courses">My classes</NavLink>}
-        {user?.role === "teacher" && <NavLink to="/teacher">My classes</NavLink>}
+        {user?.role === "teacher" && <NavLink to="/teacher" end>My classes</NavLink>}
+        {user?.role === "teacher" && <NavLink to="/teacher/style">Teaching style</NavLink>}
         {user?.role === "admin" && <NavLink to="/admin">Administration</NavLink>}
         {children}
       </nav>

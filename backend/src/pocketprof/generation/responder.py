@@ -162,8 +162,10 @@ class ChatResponder:
 
         ctx = prompts.CourseContext(self.course.code, self.course.title, self.course.teacher.name)
         brief = isinstance(client, OpenAICompatClient) and client.local
+        from ..style.service import style_block  # M5: "" unless the teacher has an active style profile
         system, messages = prompts.build(ctx, prompt_mode, history, question, result.hits,
-                                         scope.label if scope.active else None, brief=brief)
+                                         scope.label if scope.active else None, brief=brief,
+                                         style_block=style_block(self.db, self.course, self.arm, question))
         text, buffered, released = "", "", False
         try:
             for piece in client.stream(system, messages, max_tokens=self.arm.generation.max_tokens, stop=stop):

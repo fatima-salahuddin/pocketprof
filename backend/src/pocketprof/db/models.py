@@ -340,6 +340,39 @@ class Mastery(Base):
     __table_args__ = (CheckConstraint("estimate >= 0 AND estimate <= 1", name="ck_mastery_estimate"),)
 
 
+# ---------- style (M5) ----------
+
+class StyleProfile(TimestampMixin, Base):
+    """A teacher's explicit style rules (FR-11). Rules are plain sentences the teacher can read and edit;
+    nothing is used in generation until the teacher activates the profile."""
+    __tablename__ = "style_profiles"
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(12), default="draft")     # draft | active | off
+    rules: Mapped[list[Any]] = mapped_column(JSON, default=list)         # [{"id", "text", "origin", "enabled"}]
+    calibration: Mapped[list[Any]] = mapped_column(JSON, default=list)   # [{"prompt_id", "prompt", "answer"}]
+    measures: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # deterministic features behind the rules
+    model: Mapped[str | None] = mapped_column(String(160))
+    config_hash: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                 onupdate=func.now())
+    __table_args__ = (CheckConstraint("status IN ('draft','active','off')", name="ck_style_status"),)
+
+
+class StyleExemplar(TimestampMixin, Base):
+    """One example of how the teacher explains: a calibration answer, or a passage mined from their own
+    material. Only approved exemplars are indexed in the teacher's style collection (SDS Table 4)."""
+    __tablename__ = "style_exemplars"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    origin: Mapped[str] = mapped_column(String(12))                     # calibration | material
+    prompt: Mapped[str | None] = mapped_column(Text)                    # the calibration prompt it answers
+    text: Mapped[str] = mapped_column(Text)
+    source_ref: Mapped[str | None] = mapped_column(String(300))          # "file, location" for mined passages
+    status: Mapped[str] = mapped_column(String(12), default="pending")  # pending | approved | rejected
+    __table_args__ = (CheckConstraint("status IN ('pending','approved','rejected')", name="ck_exemplar_status"),
+                      CheckConstraint("origin IN ('calibration','material')", name="ck_exemplar_origin"))
+
+
 class QueryLog(Base):
     """Pseudonymous usage log feeding the cohort signal (FR-19). No user_id column by design (C-8)."""
     __tablename__ = "query_log"

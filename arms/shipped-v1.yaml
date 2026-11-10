@@ -10,4 +10,5 @@ response:   {default_mode: direct}                                            # 
 notes:      {word_budget: 6000, max_tokens: 1800, topic_top_k: 12, min_sections: 1}       # M3
 practice:   {intervals_days: [1, 2, 4, 8, 16], mastery_window: 10, mastery_decay: 0.8, max_generate: 10,
              word_budget: 3500, max_tokens: 2500, session_size: 10}                     # M4, SDS 4.5
+style:      {mode: exemplars, k: 3, min_score: 0.35}                                     # M5; E4
 analytics:  {min_cohort: 5, clo_student_threshold: 0.5, clo_cohort_target: 0.6}

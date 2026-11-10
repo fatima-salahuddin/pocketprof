@@ -21,6 +21,7 @@ from .api import (
     routes_insights,
     routes_notes,
     routes_practice,
+    routes_style,
 )
 from .api.middleware import RequestContext
 from .arms import load_arm
@@ -86,7 +87,7 @@ def create_app() -> FastAPI:
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["x-request-id"])
     errors.install(app)
     for r in (routes_auth, routes_courses, routes_google, routes_chat, routes_notes, routes_practice,
-              routes_insights, routes_admin):
+              routes_style, routes_insights, routes_admin):
         app.include_router(r.router, prefix="/api/v1")
 
     @app.get("/health", include_in_schema=False)

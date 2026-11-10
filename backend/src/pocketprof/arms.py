@@ -74,6 +74,13 @@ class Practice(BaseModel):
     session_size: int = 10       # items offered in one practice session
 
 
+class Style(BaseModel):
+    """M5 (FR-11; E4 arms). exemplars = rules + per-query exemplars; preamble = rules only; none = off."""
+    mode: Literal["exemplars", "preamble", "none"] = "exemplars"
+    k: int = 3                   # exemplars added per request
+    min_score: float = 0.35      # exemplars below this cosine to the request are not used
+
+
 class Analytics(BaseModel):
     min_cohort: int = 5
     clo_student_threshold: float = 0.5
@@ -91,6 +98,7 @@ class RunConfig(BaseModel):
     response: Response = Field(default_factory=Response)
     notes: Notes = Field(default_factory=Notes)
     practice: Practice = Field(default_factory=Practice)
+    style: Style = Field(default_factory=Style)
     analytics: Analytics = Field(default_factory=Analytics)
 
     @property

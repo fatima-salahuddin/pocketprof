@@ -55,7 +55,7 @@ LOCAL_BRIEF = ("Keep the answer short: about 120 words unless the student asks f
 def system_prompt(course: CourseContext, mode: str, *, brief: bool = False, style_block: str = "") -> str:
     parts = [RULES.format(code=course.code, title=course.title, teacher=course.teacher_name,
                           sentinel=REFUSAL_SENTINEL)]
-    if style_block:  # M5 (style adaptation) adds the teacher's rules and exemplars here in a later phase
+    if style_block:  # M5: the teacher's rules and nearest exemplars, after the grounding rules (SDS App. A)
         parts.append("STYLE\n" + style_block)
     parts.append(MODES.get(mode, MODES["direct"]))
     if brief:
@@ -96,13 +96,13 @@ def user_turn(question: str, hits: list[Hit], scope_label: str | None) -> str:
 
 
 def build(course: CourseContext, mode: str, history: list[ChatTurn], question: str, hits: list[Hit],
-          scope_label: str | None, *, brief: bool = False) -> tuple[str, list[ChatTurn]]:
+          scope_label: str | None, *, brief: bool = False, style_block: str = "") -> tuple[str, list[ChatTurn]]:
     """Returns (system prompt, messages). History is the last four turns of the thread."""
     messages = [t for t in history[-4:] if t.content.strip()]
     while messages and messages[0].role != "user":  # the first message must be the user's
         messages.pop(0)
     messages.append(ChatTurn("user", user_turn(question, hits, scope_label)))
-    return system_prompt(course, mode, brief=brief), messages
+    return system_prompt(course, mode, brief=brief, style_block=style_block), messages
 
 
 # ---------- notes (M3, FR-8) ----------

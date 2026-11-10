@@ -298,3 +298,35 @@ class PracticeReviewIn(BaseModel):
 class AttemptIn(BaseModel):
     answer: str = Field(default="", max_length=2000)
     self_correct: bool | None = Field(default=None, description="short answers: did your answer match?")
+
+
+# ----- style (M5) -----
+
+class CalibrationAnswer(BaseModel):
+    prompt_id: str = Field(max_length=32)
+    answer: str = Field(default="", max_length=4000)
+
+
+class CalibrationIn(BaseModel):
+    answers: list[CalibrationAnswer] = Field(max_length=20)
+
+
+class StyleRuleIn(BaseModel):
+    id: str | None = Field(default=None, max_length=16)
+    text: str = Field(max_length=400)
+    enabled: bool = True
+
+
+class StyleUpdateIn(BaseModel):
+    rules: list[StyleRuleIn] | None = Field(default=None, max_length=12)
+    status: Literal["draft", "active", "off"] | None = None
+
+
+class ExemplarReviewIn(BaseModel):
+    status: Literal["approved", "rejected", "pending"] | None = None
+    text: str | None = Field(default=None, max_length=4000)
+
+
+class StylePreviewIn(BaseModel):
+    course_id: int
+    question: str = Field(min_length=3, max_length=500)
