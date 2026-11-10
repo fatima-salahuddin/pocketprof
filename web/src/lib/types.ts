@@ -122,3 +122,50 @@ export interface Problem {
   status: number;
   errors?: { field?: string; row?: number; message: string }[];
 }
+
+// ----- notes (M3) -----
+
+export interface NoteSource {
+  n: number;
+  chunk_id: string | null;
+  kind: string | null;
+  file: string | null;
+  location: string | null;
+  week: number | null;
+  date: string | null;
+  post_title: string | null;
+  topic: string | null;
+  url: string | null;
+  snippet: string;
+}
+
+export interface NoteSection {
+  heading: string;
+  body: string;
+  citations: number[];
+}
+
+export interface NoteSummary {
+  id: number;
+  course_id: number;
+  title: string;
+  scope_label: string;
+  outcome: "generated" | "refused" | "fallback";
+  created_at: string;
+}
+
+export interface Note extends NoteSummary {
+  selection: Record<string, string | number>;
+  sections: NoteSection[];
+  sources: NoteSource[];
+  notice: string | null;
+  truncated: boolean;
+  model: string | null;
+}
+
+export interface NotesOptions {
+  weeks: number[];
+  lectures: number[];
+  topics: string[];
+  files: { id: number; title: string; week: number | null; topic: string | null; kind: string }[];
+}

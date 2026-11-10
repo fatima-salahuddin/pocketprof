@@ -8,6 +8,7 @@ import type { Role } from "./lib/types";
 import Admin from "./pages/Admin";
 import Chat from "./pages/Chat";
 import Login from "./pages/Login";
+import Notes from "./pages/Notes";
 import StudentCourses from "./pages/StudentCourses";
 import TeacherCourse from "./pages/TeacherCourse";
 import TeacherHome from "./pages/TeacherHome";
@@ -38,6 +39,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/login" element={<Login />} />
           <Route path="/courses" element={<Guard roles={["student"]}><StudentCourses /></Guard>} />
           <Route path="/courses/:courseId" element={<Guard roles={["student", "teacher", "admin"]}><Chat /></Guard>} />
+          <Route path="/courses/:courseId/notes" element={<Guard roles={["student", "teacher", "admin"]}><Notes /></Guard>} />
           <Route path="/teacher" element={<Guard roles={["teacher"]}><TeacherHome /></Guard>} />
           <Route path="/teacher/courses/:courseId" element={<Guard roles={["teacher", "admin"]}><TeacherCourse /></Guard>} />
           <Route path="/admin" element={<Guard roles={["admin"]}><Admin /></Guard>} />

@@ -99,3 +99,23 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[] = []) {
   }, [...deps, tick]);
   return { data, error, reload: () => setTick((t) => t + 1), setData };
 }
+
+/** The tabs of one class: ask (chat), notes (M3) and practice (M4). Staff manage practice on the course page. */
+export function CourseNav({ courseId, active }: { courseId: number; active: "ask" | "notes" | "practice" }) {
+  const { user } = useAuth();
+  const staff = user?.role === "teacher" || user?.role === "admin";
+  const items: [string, string, string][] = [
+    ["ask", "Ask", `/courses/${courseId}`],
+    ["notes", "Notes", `/courses/${courseId}/notes`],
+    staff ? ["practice", "Manage class", `/teacher/courses/${courseId}`] : ["practice", "Practice", `/courses/${courseId}/practice`],
+  ];
+  return (
+    <nav className="course-nav" aria-label="This class">
+      {items.map(([k, label, to]) => (
+        <Link key={k} to={to} className={active === k ? "on" : ""} aria-current={active === k ? "page" : undefined}>
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+}

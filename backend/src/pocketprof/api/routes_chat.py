@@ -13,7 +13,7 @@ from starlette.concurrency import iterate_in_threadpool
 
 from ..access.guard import Principal, course_for, current_principal
 from ..config import get_settings
-from ..core.errors import not_found
+from ..core.errors import bad_request, not_found
 from ..db import get_db, session_scope
 from ..db.models import Conversation, Course, User
 from ..generation.responder import ChatResponder
@@ -33,6 +33,8 @@ async def chat(course_id: int, body: ChatIn, request: Request, p: Principal = De
                db: Session = Depends(get_db)):
     # Authorise before reading (SDS 8.1 step 2): the guard runs before any collection is touched.
     course_for(db, p, course_id)
+    if body.reveal and body.thread_id is None:  # checked before the stream starts, so it can still be a 422
+        raise bad_request("A full answer can only be asked for inside a conversation.")
     wait = _limiter.check(f"user:{p.id}")
     if wait is not None:
         return too_many(wait)
@@ -45,7 +47,8 @@ async def chat(course_id: int, body: ChatIn, request: Request, p: Principal = De
             user = s.get(User, p.id)
             responder = ChatResponder(s, course, user)
             try:
-                for ev in responder.respond(body.message, thread_id=body.thread_id, mode=body.mode, stop=stop):
+                for ev in responder.respond(body.message, thread_id=body.thread_id, mode=body.mode, stop=stop,
+                                             reveal=body.reveal):
                     if ev.type == "done":
                         CHAT_OUTCOMES.labels(ev.data["outcome"]).inc()
                         s.commit()

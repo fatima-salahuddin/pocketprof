@@ -317,3 +317,38 @@ label.check { flex-direction: row !important; align-items: center; gap: 8px; }
   .mode-toggle { align-self: flex-start; }
   h1 { font-size: 1.5rem; }
 }
+
+/* ----- phase 2: course tabs, response mode (M7), notes (M3) ----- */
+.head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.course-nav { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; padding: 3px; background: var(--surface-2); }
+.course-nav a { padding: 5px 14px; border-radius: 99px; font-size: .85rem; color: var(--ink-2); text-decoration: none; font-weight: 500; }
+.course-nav a.on { background: var(--green-tint); color: var(--green); font-weight: 600; }
+.course-nav a:hover:not(.on) { color: var(--ink); }
+.mode-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 28px 0; background: var(--surface);
+  border-top: 1px solid var(--line); }
+.mode-bar + .composer { border-top: 0; padding-top: 10px; }
+.mode-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--green-2); margin: 0 0 4px; }
+.btn.reveal { margin-top: 10px; }
+.notes-body { max-width: 900px; width: 100%; margin: 0 auto; }
+.notes-picker { display: flex; flex-direction: column; gap: 14px; }
+.notes-picker h2 { margin: 0; }
+.notes-picker .seg { align-self: flex-start; flex-wrap: wrap; }
+.pick-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick-list label.grow { flex: 1 1 100%; display: flex; flex-direction: column; gap: 4px; font-weight: 500; color: var(--ink-2); }
+.chip.on { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.file-pick { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; width: 100%; max-height: 320px; overflow-y: auto; }
+.file-pick label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; overflow-wrap: anywhere; }
+.row-end { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+.notes-doc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px 26px; box-shadow: var(--shadow); }
+.notes-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 8px; }
+.notes-head .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.notes-title { margin: 4px 0 2px; font-size: 1.5rem; }
+.note-section { padding: 12px 0; border-top: 1px solid var(--line); }
+.note-section h3 { margin: 0 0 6px; color: var(--green); }
+.material-list { padding-left: 1.2em; }
+.material-list li { margin: 4px 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .mode-bar { padding-left: 16px; padding-right: 16px; }
+  .notes-doc { padding: 16px; }
+  .head-tools { width: 100%; }
+}

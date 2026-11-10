@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 # A format check only: institutional and internal domains (e.g. .local) must be accepted.
 Email = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, max_length=255,
@@ -128,6 +128,8 @@ class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     thread_id: int | None = None
     mode: Literal["direct", "scaffolded"] | None = None
+    reveal: bool = Field(default=False, description="M7: give the full answer to the thread's last question "
+                                                     "after a scaffolded reply (SRS UC-02 6a)")
 
 
 class MessageOut(ORM):
@@ -192,3 +194,50 @@ class EvalRunIn(BaseModel):
     arm: str = "shipped-v1"
     experiment: str = "regression"
     generate: bool = True
+
+
+# ----- notes and export (M3) -----
+
+class NotesIn(BaseModel):
+    week: int | None = Field(default=None, ge=1, le=30)
+    lecture: int | None = Field(default=None, ge=1, le=200)
+    topic: str | None = Field(default=None, min_length=2, max_length=200)
+    material_id: int | None = None
+
+    @model_validator(mode="after")
+    def exactly_one(self) -> NotesIn:
+        given = [k for k in ("week", "lecture", "topic", "material_id") if getattr(self, k) is not None]
+        if len(given) != 1:
+            raise ValueError("choose exactly one of week, lecture, topic or material_id")
+        return self
+
+
+class NoteSummary(ORM):
+    id: int
+    course_id: int
+    title: str
+    scope_label: str
+    outcome: str
+    created_at: datetime
+
+
+class NoteOut(NoteSummary):
+    selection: dict
+    sections: list
+    sources: list
+    notice: str | None
+    truncated: bool
+    model: str | None
+
+
+class NotesOptionsOut(BaseModel):
+    weeks: list[int]
+    lectures: list[int]
+    topics: list[str]
+    files: list[dict]
+
+
+class ExportIn(BaseModel):
+    kind: Literal["thread", "notes", "paper"]
+    ref: int = Field(description="thread id, note id, or course id for a practice paper")
+    topic: str | None = Field(default=None, max_length=200, description="paper only: limit to one topic")

@@ -55,6 +55,14 @@ class Response(BaseModel):
     default_mode: Literal["direct", "scaffolded"] = "direct"
 
 
+class Notes(BaseModel):
+    """M3 (FR-8). Notes cover a whole slice of the course, so they read far more than a chat answer."""
+    word_budget: int = 6000      # material words placed in one notes prompt; first chunk of every file is kept
+    max_tokens: int = 1800       # notes are longer than a chat answer
+    topic_top_k: int = 12        # free-text topics fall back to retrieval with this many chunks
+    min_sections: int = 1        # fewer surviving cited sections than this -> fail closed
+
+
 class Analytics(BaseModel):
     min_cohort: int = 5
     clo_student_threshold: float = 0.5
@@ -70,6 +78,7 @@ class RunConfig(BaseModel):
     generation: Generation = Field(default_factory=Generation)
     prompt: Prompt = Field(default_factory=Prompt)
     response: Response = Field(default_factory=Response)
+    notes: Notes = Field(default_factory=Notes)
     analytics: Analytics = Field(default_factory=Analytics)
 
     @property

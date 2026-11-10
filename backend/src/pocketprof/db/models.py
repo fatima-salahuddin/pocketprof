@@ -221,6 +221,30 @@ class Message(TimestampMixin, Base):
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
 
 
+# ---------- notes (M3) ----------
+
+class Note(TimestampMixin, Base):
+    """Generated study notes (M3, FR-8). Content is stored so notes can be reopened and exported with
+    their citations intact, even after the material changes."""
+    __tablename__ = "notes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
+    selection: Mapped[dict[str, Any]] = mapped_column(JSON)     # {"week": 5} | {"topic": ...} | {"material_id": 7}
+    scope_label: Mapped[str] = mapped_column(String(200))       # "Week 5", "Topic: Hashing", "File: L5.pptx"
+    title: Mapped[str] = mapped_column(String(200))
+    sections: Mapped[list[Any]] = mapped_column(JSON)           # [{"heading", "body", "citations": [n...]}]
+    sources: Mapped[list[Any]] = mapped_column(JSON)            # citation records, numbered 1..k
+    outcome: Mapped[str] = mapped_column(String(16))            # generated | refused | fallback
+    notice: Mapped[str | None] = mapped_column(String(500))
+    truncated: Mapped[bool] = mapped_column(Boolean, default=False)
+    model: Mapped[str | None] = mapped_column(String(160))
+    config_hash: Mapped[str] = mapped_column(String(64))        # which arm produced it (provenance)
+    prompt_version: Mapped[str] = mapped_column(String(32))
+    __table_args__ = (CheckConstraint("outcome IN ('generated','refused','fallback')", name="ck_notes_outcome"),
+                      Index("ix_notes_user_course", "user_id", "course_id"))
+
+
 class QueryLog(Base):
     """Pseudonymous usage log feeding the cohort signal (FR-19). No user_id column by design (C-8)."""
     __tablename__ = "query_log"

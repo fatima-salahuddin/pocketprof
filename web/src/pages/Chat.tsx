@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Markdown } from "../components/Markdown";
-import { ErrorNote, Spinner, TopBar, useLoad } from "../components/ui";
-import { ApiError, del, get, streamChat } from "../lib/api";
+import { SourcesPanel } from "../components/Sources";
+import { CourseNav, ErrorNote, Spinner, TopBar, useLoad } from "../components/ui";
+import { ApiError, del, download, get, streamChat } from "../lib/api";
 import { relativeTime } from "../lib/format";
 import type { ChatMessage, Citation, Course, Scope, Source, Thread } from "../lib/types";
+
+/** Sent as the student's turn when they ask for the full answer after a step-by-step reply (UC-02 6a).
+ * The server recognises the reveal flag, not this text. */
+const REVEAL_TEXT = "Show me the full answer.";
 
 const SUGGESTIONS = [
   "What did we cover last week?",
@@ -66,21 +71,23 @@ export default function Chat() {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  async function send(text: string) {
+  async function send(text: string, opts: { reveal?: boolean } = {}) {
     const question = text.trim();
     if (!question || busy) return;
+    const turnMode = opts.reveal ? "direct" : mode;
     setInput("");
     setError(null);
     setBusy(true);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-    setMessages((m) => [...m, { role: "user", content: question, mode },
-                        { role: "assistant", content: "", pending: true, mode }]);
+    setMessages((m) => [...m, { role: "user", content: question, mode: turnMode },
+                        { role: "assistant", content: "", pending: true, mode: turnMode }]);
     const update = (fn: (m: ChatMessage) => ChatMessage) =>
       setMessages((all) => all.map((m, i) => (i === all.length - 1 ? fn(m) : m)));
     let newThread: number | null = null;
     try {
-      await streamChat(courseId, { message: question, thread_id: threadId, mode }, ctrl.signal, {
+      await streamChat(courseId, { message: question, thread_id: threadId, mode: turnMode, reveal: !!opts.reveal },
+                       ctrl.signal, {
         onEvent(type, data) {
           if (type === "meta") {
             newThread = data.thread_id;
@@ -120,6 +127,16 @@ export default function Chat() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       send(input);
+    }
+  }
+
+  async function exportThread() {
+    if (threadId == null) return;
+    setError(null);
+    try {
+      await download("/exports", { kind: "thread", ref: threadId }, "conversation.pdf");
+    } catch (err) {
+      setError(err);
     }
   }
 
@@ -166,13 +183,11 @@ export default function Chat() {
               <h1 className="conv-title">{course.code} · {course.title}</h1>
               <p className="sub">Answers come only from this class's material on Google Classroom.</p>
             </div>
-            <div className="mode-toggle" role="radiogroup" aria-label="How should PocketProf answer?">
-              <button role="radio" aria-checked={mode === "direct"} className={mode === "direct" ? "on" : ""}
-                      onClick={() => setMode("direct")}>Direct answer</button>
-              <button role="radio" aria-checked={mode === "scaffolded"} className={mode === "scaffolded" ? "on" : ""}
-                      onClick={() => setMode("scaffolded")} title="Hints first, so you work it out yourself">
-                Step by step
-              </button>
+            <div className="head-tools">
+              <CourseNav courseId={courseId} active="ask" />
+              {threadId != null && messages.length > 0 && (
+                <button className="btn small" onClick={exportThread} disabled={busy}>Download PDF</button>
+              )}
             </div>
           </header>
 
@@ -200,6 +215,8 @@ export default function Chat() {
                 <div key={i} className="msg user"><div className="bubble">{m.content}</div></div>
               ) : (
                 <AssistantMessage key={i} m={m}
+                  onReveal={i === messages.length - 1 && !busy && m.mode === "scaffolded" && m.outcome === "answered"
+                    ? () => send(REVEAL_TEXT, { reveal: true }) : undefined}
                   onCite={(n) => setActiveSources({ sources: m.sources ?? [], focus: n })}
                   onShowSources={() => setActiveSources({ sources: m.sources ?? [], focus: null })} />
               ),
@@ -208,6 +225,18 @@ export default function Chat() {
             <div ref={endRef} />
           </div>
 
+          <div className="mode-bar">
+            <div className="mode-toggle" role="radiogroup" aria-label="How should PocketProf answer?">
+              <button role="radio" aria-checked={mode === "direct"} className={mode === "direct" ? "on" : ""}
+                      onClick={() => setMode("direct")}>Direct answer</button>
+              <button role="radio" aria-checked={mode === "scaffolded"} className={mode === "scaffolded" ? "on" : ""}
+                      onClick={() => setMode("scaffolded")} title="Hints first, so you work it out yourself">
+                Step by step
+              </button>
+            </div>
+            <span className="fine">{mode === "scaffolded" ? "Hints first; the full answer is one click away."
+              : "Full answers, with a source for every point."}</span>
+          </div>
           <form className="composer" onSubmit={onSubmit}>
             <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey}
                       rows={1} maxLength={2000} placeholder={`Ask about ${course.code}...`} aria-label="Your question"
@@ -228,8 +257,8 @@ export default function Chat() {
   );
 }
 
-function AssistantMessage({ m, onCite, onShowSources }: { m: ChatMessage; onCite: (n: number) => void;
-                                                           onShowSources: () => void }) {
+function AssistantMessage({ m, onCite, onShowSources, onReveal }: { m: ChatMessage; onCite: (n: number) => void;
+                                                                     onShowSources: () => void; onReveal?: () => void }) {
   const citable = useMemo(() => new Set((m.sources ?? []).map((s) => s.n)), [m.sources]);
   const cited = (m.sources ?? []).filter((s) => s.cited);
   return (
@@ -242,7 +271,11 @@ function AssistantMessage({ m, onCite, onShowSources }: { m: ChatMessage; onCite
       )}
       {m.pending && !m.content && <div className="typing" aria-label="PocketProf is answering"><i /><i /><i /></div>}
       {m.outcome === "refused" && <p className="refusal-label">Not in the class material</p>}
+      {m.mode === "scaffolded" && m.outcome === "answered" && <p className="mode-label">Step by step</p>}
       {m.content && <Markdown text={m.content} onCite={onCite} citable={citable} />}
+      {onReveal && (
+        <button className="btn small reveal" onClick={onReveal}>Show me the full answer</button>
+      )}
       {m.notice && m.outcome === "fallback" && <p className="notice">{m.notice}</p>}
       {m.showPassages && m.sources?.length ? (
         <details className="passages">
@@ -270,36 +303,5 @@ function AssistantMessage({ m, onCite, onShowSources }: { m: ChatMessage; onCite
         </footer>
       )}
     </article>
-  );
-}
-
-function SourcesPanel({ sources, focus, onClose }: { sources: Source[]; focus: number | null; onClose: () => void }) {
-  const refs = useRef<Record<number, HTMLLIElement | null>>({});
-  useEffect(() => {
-    if (focus != null) refs.current[focus]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [focus]);
-  return (
-    <aside className="sources" aria-label="Sources">
-      <header>
-        <h2>Sources</h2>
-        <button className="icon-btn" onClick={onClose} aria-label="Close sources">×</button>
-      </header>
-      <ol>
-        {sources.map((s) => (
-          <li key={s.n} ref={(el) => (refs.current[s.n] = el)} className={`${s.cited ? "cited" : ""} ${s.n === focus ? "focus" : ""}`}>
-            <div className="src-head">
-              <span className="cite static">S{s.n}</span>
-              <span className="src-file">{s.file}</span>
-            </div>
-            <p className="src-where">
-              {[s.location, s.week ? `Week ${s.week}` : null, s.post_title].filter(Boolean).join(" · ")}
-            </p>
-            {s.snippet && <p className="src-snippet">{s.snippet}</p>}
-            {s.ocr && <p className="src-flag">Read with OCR; check the original.</p>}
-            {s.url && <a href={s.url} target="_blank" rel="noreferrer">Open on Classroom</a>}
-          </li>
-        ))}
-      </ol>
-    </aside>
   );
 }

@@ -56,7 +56,9 @@ def _evaluate_query(db, course: Course, user: User, arm, q: queryset.Query, gene
         cited_gold=sum(1 for n in cited if 0 < n <= len(gold_flags) and gold_flags[n - 1]),
         scope_expected=q.scope, scope_resolved=scope.as_dict() if scope.active else None,
         scope_weeks=[h.payload.get("week") for h in hits], top_score=round(result.top_score, 4),
-        retrieval_ms=int((t_ret - t0) * 1000), total_ms=int((time.perf_counter() - t0) * 1000), answer=answer[:1500])
+        retrieval_ms=int((t_ret - t0) * 1000), total_ms=int((time.perf_counter() - t0) * 1000), answer=answer[:1500],
+        mode=arm.response.default_mode, has_solution_labels=bool(q.solution),
+        discloses_solution=bool(answer) and q.discloses_solution(answer))
 
 
 def run(run_id: int) -> None:
