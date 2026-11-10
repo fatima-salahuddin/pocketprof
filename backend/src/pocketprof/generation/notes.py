@@ -171,6 +171,46 @@ def material_list(payloads: list[dict]) -> list[dict]:
     return list(by_file.values())
 
 
+# ---------- selection (shared with practice generation, M4) ----------
+
+def resolve_selection(db: Session, course: Course, selection: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    """Exactly one of week, lecture, topic or material_id -> (canonical selection, label). A topic that
+    matches a topic tag (any case) becomes that tag; any other text becomes a free-text topic."""
+    given = {k: v for k, v in selection.items() if k in SELECTION_KEYS and v not in (None, "")}
+    if len(given) != 1:
+        raise bad_request("Choose exactly one of: week, lecture, topic or file.")
+    key, value = next(iter(given.items()))
+    if key == "week":
+        return {"week": int(value)}, f"Week {int(value)}"
+    if key == "lecture":
+        return {"lecture": int(value)}, f"Lecture {int(value)}"
+    if key == "material_id":
+        m = db.get(Material, int(value))
+        if m is None or m.course_id != course.id or m.status != "indexed":
+            raise not_found("File")
+        return {"material_id": m.id}, m.title
+    text = str(value).strip()
+    canonical = db.scalar(select(Material.topic).where(
+        Material.course_id == course.id, Material.status == "indexed",
+        func.lower(Material.topic) == text.lower()).limit(1))
+    if canonical:
+        return {"topic": canonical}, canonical
+    return {"topic_text": text}, f'"{text}"'
+
+
+def collect_chunks(course: Course, arm: RunConfig, selection: dict[str, Any]) -> list[dict]:
+    """The chunks behind a resolved selection, in teaching order. A free-text topic uses retrieval (with a
+    larger top-k) and returns nothing when retrieval abstains."""
+    if "topic_text" in selection:
+        n = arm.notes.topic_top_k
+        wide = arm.model_copy(update={"retrieval": arm.retrieval.model_copy(update={"top_k": n})})
+        result = retrieve(course.id, selection["topic_text"], wide, Scope())
+        if result.abstain or not result.hits:
+            return []
+        return sorted((h.payload for h in result.hits), key=teaching_order)
+    return select_chunks(course.id, selection)
+
+
 # ---------- the generator ----------
 
 class NotesGenerator:
@@ -179,37 +219,10 @@ class NotesGenerator:
         self.arm = arm or load_arm(course.active_arm)
 
     def validate(self, selection: dict[str, Any]) -> tuple[dict[str, Any], str]:
-        """Returns (canonical selection, scope label). Raises 404/422 problems."""
-        given = {k: v for k, v in selection.items() if k in SELECTION_KEYS and v not in (None, "")}
-        if len(given) != 1:
-            raise bad_request("Choose exactly one of: week, lecture, topic or file.")
-        key, value = next(iter(given.items()))
-        if key == "week":
-            return {"week": int(value)}, f"Week {int(value)}"
-        if key == "lecture":
-            return {"lecture": int(value)}, f"Lecture {int(value)}"
-        if key == "material_id":
-            m = self.db.get(Material, int(value))
-            if m is None or m.course_id != self.course.id or m.status != "indexed":
-                raise not_found("File")
-            return {"material_id": m.id}, m.title
-        text = str(value).strip()
-        canonical = self.db.scalar(select(Material.topic).where(
-            Material.course_id == self.course.id, Material.status == "indexed",
-            func.lower(Material.topic) == text.lower()).limit(1))
-        if canonical:
-            return {"topic": canonical}, canonical
-        return {"topic_text": text}, f'"{text}"'
+        return resolve_selection(self.db, self.course, selection)
 
     def _collect(self, selection: dict[str, Any]) -> list[dict]:
-        if "topic_text" in selection:
-            n = self.arm.notes.topic_top_k
-            arm = self.arm.model_copy(update={"retrieval": self.arm.retrieval.model_copy(update={"top_k": n})})
-            result = retrieve(self.course.id, selection["topic_text"], arm, Scope())
-            if result.abstain or not result.hits:
-                return []
-            return sorted((h.payload for h in result.hits), key=teaching_order)
-        return select_chunks(self.course.id, selection)
+        return collect_chunks(self.course, self.arm, selection)
 
     def _style(self, query: str) -> str:
         from ..style.service import style_block  # M5: empty unless the teacher has an active style profile

@@ -14,6 +14,7 @@ import re
 from collections.abc import Callable
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db.models import Conversation, Course, Note
@@ -98,5 +99,41 @@ def notes_document(db: Session, note: Note) -> Document:
                     filename=f"{slug(code, note.scope_label, 'notes')}.pdf")
 
 
+def paper_document(db: Session, course: Course, principal, *, topic: str | None = None) -> Document:
+    """A practice paper (FR-9, FR-10): released items for students; staff also get approved items not yet
+    released. Questions first, then an answer key whose [n] markers point at the Sources list."""
+    from ..core.errors import bad_request
+    from ..db.models import PracticeItem
+    from ..practice.lifecycle import refresh
+    refresh(db, course)
+    states = ("released",) if principal.role == "student" else ("validated", "released")
+    q = select(PracticeItem).where(PracticeItem.course_id == course.id, PracticeItem.status.in_(states))
+    if topic:
+        q = q.where(PracticeItem.topic == topic)
+    items = list(db.scalars(q.order_by(PracticeItem.week, PracticeItem.topic, PracticeItem.id)))
+    if not items:
+        raise bad_request("There are no approved practice questions" + (f" for {topic}" if topic else "") + " yet.")
+    book = SourceBook()
+    questions, key = [], []
+    for i, it in enumerate(items, start=1):
+        n = book.add(it.source or {})
+        block = f"<p><b>{i}.</b> {html.escape(it.question)}</p>"
+        if it.kind == "mcq" and it.options:
+            block += "<ol type='A'>" + "".join(f"<li>{html.escape(o)}</li>" for o in it.options) + "</ol>"
+        elif it.kind == "tf":
+            block += "<p class='sub'>True or false?</p>"
+        else:
+            block += "<p class='sub'>Answer in one to three sentences.</p><p>&nbsp;</p>"
+        questions.append(block)
+        answer = (f"{it.answer}. {html.escape(it.options['ABCD'.index(it.answer)])}" if it.kind == "mcq" and it.options
+                  else html.escape(it.answer.capitalize() if it.kind == "tf" else it.answer))
+        why = f" {html.escape(it.explanation)}" if it.explanation else ""
+        key.append(f"<li><b>{answer}</b>{why} <sup>[{n}]</sup></li>")
+    body = ("<h2>Questions</h2>" + "".join(questions) + "<h2>Answer key</h2><ol>" + "".join(key) + "</ol>")
+    scope = topic or "all delivered topics"
+    return Document(title=f"{course.code} practice paper", subtitle=f"{course.title} · {scope} · {len(items)} questions",
+                    body_html=body, sources=book.sources, filename=f"{slug(course.code, topic or '', 'practice-paper')}.pdf")
+
+
 Builder = Callable[..., Document]
-KINDS: dict[str, Builder] = {"thread": thread_document, "notes": notes_document}
+KINDS: dict[str, Builder] = {"thread": thread_document, "notes": notes_document, "paper": paper_document}

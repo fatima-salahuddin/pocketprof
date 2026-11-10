@@ -352,3 +352,66 @@ label.check { flex-direction: row !important; align-items: center; gap: 8px; }
   .notes-doc { padding: 16px; }
   .head-tools { width: 100%; }
 }
+
+/* ----- practice (M4) ----- */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.chat-shell.no-threads { grid-template-columns: minmax(0, 1fr); }
+.chat-shell.no-threads.with-sources { grid-template-columns: minmax(0, 1fr) 360px; }
+.practice-body { max-width: 1060px; width: 100%; margin: 0 auto; }
+.practice-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+.question-card { display: flex; flex-direction: column; gap: 12px; }
+.question-card.is-right { border-color: var(--green-2); }
+.question-card.is-wrong { border-color: var(--ochre); }
+.q-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; color: var(--ink-3); font-size: .85rem; }
+.q-text { margin: 0; font-size: 1.2rem; }
+.options { display: grid; gap: 8px; }
+.options.tf { grid-template-columns: 1fr 1fr; }
+.option { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 14px; border: 1px solid var(--line);
+  border-radius: var(--r-md); background: var(--surface); cursor: pointer; color: var(--ink); }
+.option:hover:not(:disabled) { border-color: var(--green-2); }
+.option:disabled { cursor: default; }
+.option.picked { border-color: var(--green); box-shadow: 0 0 0 2px var(--green-tint); }
+.option.right { border-color: var(--green-2); background: var(--green-tint); }
+.option.wrong { border-color: var(--ochre); background: var(--ochre-tint); }
+.opt-letter { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+  border: 1px solid var(--line); font-weight: 600; font-size: .8rem; }
+.short-answer { display: flex; flex-direction: column; gap: 4px; font-weight: 500; color: var(--ink-2); }
+.feedback { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.feedback p { margin: 0; }
+.fb-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 0 6px 0 0; }
+.fb-verdict { font: 650 1.1rem var(--serif); }
+.fb-verdict.right { color: var(--green); }
+.fb-verdict.wrong { color: var(--ochre); }
+.fb-verdict.right::before { content: "\2713  "; }
+.fb-verdict.wrong::before { content: "\2717  "; }
+.spacing { color: var(--ink-2); }
+.done-card h2 { margin-top: 0; }
+.mastery-card h2 { margin-top: 0; }
+.mastery { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 12px; }
+.m-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 500; font-size: .9rem; }
+.m-val { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; margin: 4px 0 2px; }
+.bar i { display: block; height: 100%; background: var(--green-2); border-radius: 99px; }
+.generator { margin: 14px 0; }
+.generator .kinds { border: 0; padding: 0; margin: 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.generator .kinds legend { font-size: .9rem; font-weight: 500; color: var(--ink-2); padding: 0; margin-bottom: 4px; }
+.generator input[type=number] { width: 80px; }
+.review-list { display: grid; gap: 12px; }
+.review-card { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; }
+.review-card.status-rejected, .review-card.status-retired { opacity: .75; }
+.review-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.review-main .row { flex-wrap: wrap; }
+.review-options { margin: 0; padding-left: 1.4em; }
+.review-options li { padding: 2px 4px; }
+.review-options li.right { background: var(--green-tint); color: var(--green); font-weight: 600; border-radius: var(--r-sm); }
+.review-options li.right::after { content: "  \2713 correct"; font-size: .8rem; }
+.review-source { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; min-width: 0; }
+@media (max-width: 960px) {
+  .practice-grid, .review-card { grid-template-columns: 1fr; }
+  .chat-shell.no-threads.with-sources { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .options.tf { grid-template-columns: 1fr; }
+  .table-tools { flex-direction: column; align-items: stretch; gap: 8px; }
+  .table-tools .seg { overflow-x: auto; }
+}

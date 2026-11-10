@@ -3,16 +3,22 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Empty, ErrorNote, Page, Spinner, StatusPill, useLoad } from "../components/ui";
 import { del, get, patch, post, put } from "../lib/api";
 import { plural, relativeTime, shortDate } from "../lib/format";
-import type { Course, Material, Run } from "../lib/types";
+import type { Course, ItemStatus, Material, Run } from "../lib/types";
+import PracticeTab from "./TeacherPractice";
 
-type Tab = "material" | "runs" | "questions" | "calendar" | "settings";
+type Tab = "material" | "practice" | "runs" | "questions" | "calendar" | "settings";
 
 export default function TeacherCourse() {
   const id = Number(useParams().courseId);
   const course = useLoad(() => get<Course>(`/courses/${id}`), [id]);
   const [tab, setTab] = useState<Tab>("material");
   const [syncError, setSyncError] = useState<unknown>(null);
+  const [practiceCounts, setPracticeCounts] = useState<Record<ItemStatus, number> | null>(null);
   const c = course.data;
+  // UI-8: the validation queue count is visible from the course page, not only inside the tab.
+  useEffect(() => {
+    get<{ counts: Record<ItemStatus, number> }>(`/courses/${id}/validation`).then((q) => setPracticeCounts(q.counts)).catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     if (c?.status !== "syncing" && c?.status !== "new") return;
@@ -60,7 +66,8 @@ export default function TeacherCourse() {
       )}
 
       <nav className="tabs" role="tablist">
-        {([["material", "What PocketProf read"], ["runs", "Sync reports"], ["questions", "Student questions"],
+        {([["material", "What PocketProf read"],
+           ["practice", `Practice${practiceCounts?.draft ? ` (${practiceCounts.draft} to review)` : ""}`], ["runs", "Sync reports"], ["questions", "Student questions"],
            ["calendar", "Calendar"], ["settings", "Settings"]] as [Tab, string][]).map(([t, label]) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
             {label}
@@ -69,6 +76,7 @@ export default function TeacherCourse() {
       </nav>
 
       {tab === "material" && <MaterialTab course={c} onChange={course.reload} />}
+      {tab === "practice" && <PracticeTab courseId={c.id} onCounts={setPracticeCounts} />}
       {tab === "runs" && <RunsTab courseId={c.id} />}
       {tab === "questions" && <QuestionsTab courseId={c.id} />}
       {tab === "calendar" && <CalendarTab courseId={c.id} />}

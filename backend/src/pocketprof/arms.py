@@ -63,6 +63,17 @@ class Notes(BaseModel):
     min_sections: int = 1        # fewer surviving cited sections than this -> fail closed
 
 
+class Practice(BaseModel):
+    """M4 (FR-10, FR-17, FR-18; SDS 4.5). The schedule and the mastery estimate are deterministic rules."""
+    intervals_days: list[int] = Field(default_factory=lambda: [1, 2, 4, 8, 16])   # Leitner boxes 1..5
+    mastery_window: int = 10     # last N attempts per topic
+    mastery_decay: float = 0.8   # w_k = decay^(k-1), k = 1 is the most recent attempt
+    max_generate: int = 10       # items per generation request
+    word_budget: int = 3500      # material words placed in one generation prompt
+    max_tokens: int = 2500
+    session_size: int = 10       # items offered in one practice session
+
+
 class Analytics(BaseModel):
     min_cohort: int = 5
     clo_student_threshold: float = 0.5
@@ -79,6 +90,7 @@ class RunConfig(BaseModel):
     prompt: Prompt = Field(default_factory=Prompt)
     response: Response = Field(default_factory=Response)
     notes: Notes = Field(default_factory=Notes)
+    practice: Practice = Field(default_factory=Practice)
     analytics: Analytics = Field(default_factory=Analytics)
 
     @property

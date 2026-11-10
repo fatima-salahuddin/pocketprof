@@ -241,3 +241,60 @@ class ExportIn(BaseModel):
     kind: Literal["thread", "notes", "paper"]
     ref: int = Field(description="thread id, note id, or course id for a practice paper")
     topic: str | None = Field(default=None, max_length=200, description="paper only: limit to one topic")
+
+
+# ----- practice (M4) -----
+
+PracticeKind = Literal["mcq", "tf", "short"]
+
+
+class PracticeGenerateIn(BaseModel):
+    week: int | None = Field(default=None, ge=1, le=30)
+    topic: str | None = Field(default=None, min_length=2, max_length=200)
+    material_id: int | None = None
+    n: int = Field(default=5, ge=1, le=20)
+    kinds: list[PracticeKind] = Field(default_factory=lambda: ["mcq", "tf", "short"], min_length=1)
+
+    @model_validator(mode="after")
+    def exactly_one(self) -> PracticeGenerateIn:
+        given = [k for k in ("week", "topic", "material_id") if getattr(self, k) is not None]
+        if len(given) != 1:
+            raise ValueError("choose exactly one of week, topic or material_id")
+        return self
+
+
+class PracticeItemOut(ORM):
+    """The teacher's view of an item: everything, including the answer and the source it came from."""
+    id: int
+    course_id: int
+    kind: str
+    question: str
+    options: list | None
+    answer: str
+    explanation: str | None
+    topic: str | None
+    week: int | None
+    source: dict
+    status: str
+    reject_reason: str | None
+    edited: bool
+    retired_reason: str | None
+    created_at: datetime
+    validated_at: datetime | None
+    released_at: datetime | None
+    model: str | None
+    stats: dict | None = None
+
+
+class PracticeReviewIn(BaseModel):
+    action: Literal["approve", "reject", "retire"]
+    reason: str | None = Field(default=None, max_length=500)
+    question: str | None = Field(default=None, max_length=800)
+    options: list[str] | None = Field(default=None, min_length=4, max_length=4)
+    answer: str | None = Field(default=None, max_length=1500)
+    explanation: str | None = Field(default=None, max_length=800)
+
+
+class AttemptIn(BaseModel):
+    answer: str = Field(default="", max_length=2000)
+    self_correct: bool | None = Field(default=None, description="short answers: did your answer match?")
