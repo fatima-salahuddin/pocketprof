@@ -260,3 +260,24 @@ def test_calendar_validation_reports_every_bad_row(client, other_course):
 def test_health_and_metrics(client):
     assert client.get("/health").json()["status"] == "ok"
     assert "pocketprof_http_requests_total" in client.get("/metrics").text
+
+
+# ----- sign-in page demo accounts (development and demo only) -----
+
+def test_demo_accounts_in_development(client, seeded):
+    rows = client.get("/api/v1/auth/demo-accounts").json()
+    assert [r["role"] for r in rows] == ["admin", "teacher", "student"]
+    assert all(r["password"] == "seed-password-1" for r in rows)  # SEED_PASSWORD, not a hard-coded value
+    for r in rows:  # and they really sign in
+        assert client.post("/api/v1/auth/login", json={"email": r["email"], "password": r["password"]}).status_code == 200
+
+
+def test_demo_accounts_never_in_a_pilot(client, monkeypatch):
+    from pocketprof.config import get_settings
+    s = get_settings()
+    monkeypatch.setattr(s, "env", "pilot")
+    monkeypatch.setattr(s, "demo_logins", True)  # even when someone switches them on
+    assert client.get("/api/v1/auth/demo-accounts").json() == []
+    monkeypatch.setattr(s, "env", "development")
+    monkeypatch.setattr(s, "demo_logins", False)
+    assert client.get("/api/v1/auth/demo-accounts").json() == []

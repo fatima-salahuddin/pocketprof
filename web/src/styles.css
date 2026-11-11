@@ -437,3 +437,14 @@ label.check { flex-direction: row !important; align-items: center; gap: 8px; }
   /* The header stacks vertically here, where a flex-basis would become a height (an empty gap). */
   .conv-head > *, .conv-head > div:nth-child(n) { flex: 0 0 auto; }
 }
+
+/* ----- sign-in: demo accounts (development and demo only) ----- */
+.demo-logins { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.demo-label { font-weight: 600; margin: 0 0 8px; }
+.demo-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.demo-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; text-align: left;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); cursor: pointer; color: var(--ink); }
+.demo-btn span { font-size: .78rem; color: var(--ink-3); }
+.demo-btn:hover { border-color: var(--green-2); }
+.demo-btn.on { border-color: var(--green); background: var(--green-tint); }
+@media (max-width: 420px) { .demo-buttons { grid-template-columns: 1fr; } }
