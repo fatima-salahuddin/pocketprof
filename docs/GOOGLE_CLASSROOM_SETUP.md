@@ -64,9 +64,11 @@ the **same class code**.
 ## Things that surprise people
 
 - **Where week numbers come from.** In order: a week typed when uploading a file; a week in the Classroom
-  topic's name ("Week 5 - Normalisation", "Wk 5", "week-05"); otherwise the post date, where week 1 is the week
-  of the class's first post (or the *Term starts* date in the course's *Settings* tab). Classroom cannot
-  backdate posts, so a test class posted all at once needs week-named topics for "week 5" questions to work.
+  topic's name ("Week 5 - Normalisation", "Wk 5", "week-05"); a Material's or Assignment's title or attached
+  file name that **starts with** the week ("WEEK 3", "Week3_notes.pdf"; never announcements); otherwise the
+  post date, where week 1 is the week of the class's first post (or the *Term starts* date in the course's
+  *Settings* tab). Classroom cannot backdate posts, so a test class posted all at once needs week-named topics,
+  titles or file names for "week 5" questions to work.
   Renaming a topic re-files its posts on the next sync. Relative questions ("last week") still count from
   today's date, so they match week-named topics only when the topics follow the real calendar.
 - **Practice questions only come from material already posted** (FR-10), so a post scheduled for the future is

@@ -69,3 +69,46 @@ def test_topic_week_reaches_the_index_and_scoped_questions(client, other_teacher
     meta = next(d for e, d in res["events"] if e == "meta")
     assert res["outcome"] == "answered" and meta["scope"]["week"] == 5
     assert {s["file"] for s in meta["sources"]} == {"Normalisation.txt"}
+
+
+# ----- titles and file names that start with the week (Materials, Assignments, uploads only) -----
+
+@pytest.mark.parametrize("kind,topic,post_title,title,week", [
+    # exactly as posted in the CS-2005 test class
+    ("Material", None, "Intro + Relational Models", "WEEK 1 Intro Relational Model.pptx", 1),
+    ("Material", None, "week 2", "WEEK 2 ER Modelling.pdf", 2),
+    ("Material", None, "WEEK 3", "WEEK 3 Relational Algebra.docx", 3),
+    ("Material", None, "WEEK 6", "WEEK  6 Transactions.docx", 6),
+    # other shapes
+    ("Upload", None, "Uploaded material", "Week3_notes.pdf", 3),
+    ("Assignment", None, "Week 4 lab task", "Post text", 4),
+    ("Material", "Week 2 - ER Modelling", "WEEK 3", "WEEK 3 x.pdf", 2),       # the topic wins
+    # never from announcements, and a title must START with the week
+    ("Announcement", None, "Week 5 quiz moved to Monday", "Post text", None),
+    ("Material", None, "Mid 2 syllabus: week 5 and week 6", "Post text", None),
+    ("Assignment", None, "Assignment 1: ER Diagram for a University Library", "Post text", None),
+    ("Material", None, "Weekly reading list", "Reading.pdf", None),
+])
+def test_declared_week(kind, topic, post_title, title, week):
+    from pocketprof.ingestion.calendar import declared_week
+    assert declared_week(kind, topic, post_title, title) == week
+
+
+def test_declared_lecture():
+    from pocketprof.ingestion.calendar import declared_lecture
+    assert declared_lecture("Material", None, "Lecture 7 slides", "x.pdf") == 7
+    assert declared_lecture("Material", None, "Slides", "Lec_07 Heaps.pptx") == 7
+    assert declared_lecture("Announcement", None, "Lecture 7 is cancelled", "Post text") is None
+
+
+def test_file_named_with_its_week_is_filed_under_it(client, other_teacher, labelled_course):
+    from pocketprof.ingestion.provisioning import ProvisioningJob
+    c, _ = labelled_course
+    r = client.post(f"/api/v1/courses/{c['id']}/materials", headers=other_teacher,
+                    files={"files": ("Week3_Transactions.txt", b"Transactions. ACID stands for atomicity, consistency, "
+                                     b"isolation and durability.", "text/plain")})
+    assert r.status_code == 201, r.text
+    wait_idle(c["id"])
+    ProvisioningJob(c["id"], "manual").run()
+    mats = {m["title"]: m for m in client.get(f"/api/v1/courses/{c['id']}/materials", headers=other_teacher).json()}
+    assert mats["Week3_Transactions.txt"]["week"] == 3
