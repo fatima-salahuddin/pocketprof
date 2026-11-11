@@ -226,9 +226,11 @@ class ProvisioningJob:
         row.post_title, row.topic, row.url, row.post_url = doc.post_title, doc.topic, doc.url, doc.post_url
         if doc.published_at:
             row.published_at = doc.published_at
-        if not (row.source == "upload" and row.week):  # an upload's week may be set by the teacher
-            row.week = cal.week_of(row.published_at)
-        row.lecture_no = cal.lecture_of(row.published_at)
+        # Week, in priority order: the week a teacher typed on upload; a week named in the topic
+        # ("Week 5 - Normalisation"); the week the post date falls in.
+        if not (row.source == "upload" and row.week):
+            row.week = calendar.week_from_label(doc.topic) or cal.week_of(row.published_at)
+        row.lecture_no = calendar.lecture_from_label(doc.topic) or cal.lecture_of(row.published_at)
 
     def _one(self, db, course, arm, row: Material, doc: SourceDocument, report: RunReport, rebuild: bool,
              embedder, index, name) -> None:

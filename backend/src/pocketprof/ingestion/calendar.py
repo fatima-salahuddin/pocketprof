@@ -4,11 +4,17 @@ Two sources, in priority order:
 1. an uploaded calendar.csv (date, week, lecture_no, topics), when the teacher provides one;
 2. the course's term start: week 1 is the week (Monday to Sunday) containing term_start.
 If neither is set, term_start defaults to the Monday of the earliest material's post date.
+
+A teacher's own label overrides the date: a Classroom topic named "Week 5 - Normalisation" files its posts
+under week 5, and "Lecture 9 - Heaps" under lecture 9, whenever they were posted (see week_from_label). Only
+topic names are read this way: a post title such as "Mid 2 syllabus: week 5 and week 6" mentions weeks without
+belonging to them.
 """
 from __future__ import annotations
 
 import csv
 import io
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -18,6 +24,25 @@ from sqlalchemy.orm import Session
 
 from ..core.errors import bad_request
 from ..db.models import CalendarDay, Course, Material
+
+MAX_WEEK = 30
+MAX_LECTURE = 200
+# "Week 5", "week-05", "Wk 5:", "WEEK#5", "Week 5 & 6" (the first week wins). Not "weekly" or "5 weeks".
+_LABEL_WEEK = re.compile(r"\b(?:week|wk)\s*[-#:.]?\s*0*(\d{1,2})\b", re.I)
+_LABEL_LECTURE = re.compile(r"\b(?:lecture|lec)\s*[-#:.]?\s*0*(\d{1,3})\b", re.I)
+
+
+def week_from_label(label: str | None) -> int | None:
+    """The teaching week a topic name declares, or None."""
+    m = _LABEL_WEEK.search(label or "")
+    n = int(m.group(1)) if m else 0
+    return n if 1 <= n <= MAX_WEEK else None
+
+
+def lecture_from_label(label: str | None) -> int | None:
+    m = _LABEL_LECTURE.search(label or "")
+    n = int(m.group(1)) if m else 0
+    return n if 1 <= n <= MAX_LECTURE else None
 
 
 def monday(d: date) -> date:

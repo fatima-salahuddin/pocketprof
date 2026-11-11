@@ -31,8 +31,9 @@ has to register PocketProf with Google once and put two values in their `.env`. 
 
 1. <https://classroom.google.com> with the same account, **+**, *Create class* (a personal Gmail account can
    create classes; choose "I'm a teacher" if asked).
-2. **Classwork**, *Create*, *Topic*: make a few topics (e.g. "Stacks", "Queues"). PocketProf turns Classroom
-   topics into its topics, which notes and practice generation are organised by.
+2. **Classwork**, *Create*, *Topic*: make one topic per week, **named with the week**, e.g. "Week 1 - Relational
+   Model", "Week 2 - ER Modelling". PocketProf turns Classroom topics into its topics (notes and practice are
+   organised by them), and a week (or "Lecture N") in a topic's name sets the week of everything posted under it.
 3. Post a mix, each under a topic: *Material* with an attached PDF, PPTX, DOCX or Google Doc/Slides; an
    *Assignment* with instructions; and a couple of **Announcements** on the Stream (e.g. "Quiz 1 is on
    Friday 20 November and covers stacks"). Posts must be published, not drafts or scheduled.
@@ -62,9 +63,12 @@ the **same class code**.
 
 ## Things that surprise people
 
-- **Week numbers come from post dates.** Week 1 is the week of the class's first post (or the *Term starts*
-  date in the course's *Settings* tab). A new class whose material is all posted this week is all "Week 1";
-  test with topics, or set an earlier term start. Classroom cannot backdate posts.
+- **Where week numbers come from.** In order: a week typed when uploading a file; a week in the Classroom
+  topic's name ("Week 5 - Normalisation", "Wk 5", "week-05"); otherwise the post date, where week 1 is the week
+  of the class's first post (or the *Term starts* date in the course's *Settings* tab). Classroom cannot
+  backdate posts, so a test class posted all at once needs week-named topics for "week 5" questions to work.
+  Renaming a topic re-files its posts on the next sync. Relative questions ("last week") still count from
+  today's date, so they match week-named topics only when the topics follow the real calendar.
 - **Practice questions only come from material already posted** (FR-10), so a post scheduled for the future is
   not used until it appears.
 - **Testing-mode Google tokens expire after 7 days.** If a class stops updating with "Reconnect your Google
