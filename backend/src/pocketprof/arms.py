@@ -55,6 +55,32 @@ class Response(BaseModel):
     default_mode: Literal["direct", "scaffolded"] = "direct"
 
 
+class Notes(BaseModel):
+    """M3 (FR-8). Notes cover a whole slice of the course, so they read far more than a chat answer."""
+    word_budget: int = 6000      # material words placed in one notes prompt; first chunk of every file is kept
+    max_tokens: int = 1800       # notes are longer than a chat answer
+    topic_top_k: int = 12        # free-text topics fall back to retrieval with this many chunks
+    min_sections: int = 1        # fewer surviving cited sections than this -> fail closed
+
+
+class Practice(BaseModel):
+    """M4 (FR-10, FR-17, FR-18; SDS 4.5). The schedule and the mastery estimate are deterministic rules."""
+    intervals_days: list[int] = Field(default_factory=lambda: [1, 2, 4, 8, 16])   # Leitner boxes 1..5
+    mastery_window: int = 10     # last N attempts per topic
+    mastery_decay: float = 0.8   # w_k = decay^(k-1), k = 1 is the most recent attempt
+    max_generate: int = 10       # items per generation request
+    word_budget: int = 3500      # material words placed in one generation prompt
+    max_tokens: int = 2500
+    session_size: int = 10       # items offered in one practice session
+
+
+class Style(BaseModel):
+    """M5 (FR-11; E4 arms). exemplars = rules + per-query exemplars; preamble = rules only; none = off."""
+    mode: Literal["exemplars", "preamble", "none"] = "exemplars"
+    k: int = 3                   # exemplars added per request
+    min_score: float = 0.35      # exemplars below this cosine to the request are not used
+
+
 class Analytics(BaseModel):
     min_cohort: int = 5
     clo_student_threshold: float = 0.5
@@ -70,6 +96,9 @@ class RunConfig(BaseModel):
     generation: Generation = Field(default_factory=Generation)
     prompt: Prompt = Field(default_factory=Prompt)
     response: Response = Field(default_factory=Response)
+    notes: Notes = Field(default_factory=Notes)
+    practice: Practice = Field(default_factory=Practice)
+    style: Style = Field(default_factory=Style)
     analytics: Analytics = Field(default_factory=Analytics)
 
     @property

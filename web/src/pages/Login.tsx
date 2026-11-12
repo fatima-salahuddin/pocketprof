@@ -1,8 +1,12 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Brand, ErrorNote } from "../components/ui";
-import { login, signup } from "../lib/api";
+import { get, login, signup } from "../lib/api";
 import { homeFor, useAuth } from "../lib/auth";
+
+/** Seed accounts offered by the API in development and demo mode only (never in a pilot). */
+interface DemoAccount { role: "student" | "teacher" | "admin"; name: string; email: string; password: string }
+const ROLE_LABEL = { student: "Student", teacher: "Teacher", admin: "Admin" };
 
 export default function Login() {
   const { user } = useAuth();
@@ -14,6 +18,20 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [demo, setDemo] = useState<DemoAccount[]>([]);
+  const submitRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    get<DemoAccount[]>("/auth/demo-accounts").then(setDemo).catch(() => setDemo([]));
+  }, []);
+
+  function fill(a: DemoAccount) {
+    setMode("signin");
+    setEmail(a.email);
+    setPassword(a.password);
+    setError(null);
+    submitRef.current?.focus();
+  }
 
   if (user) return <Navigate to={from ?? homeFor(user)} replace />;
 
@@ -67,7 +85,7 @@ export default function Login() {
                    autoComplete={mode === "signin" ? "current-password" : "new-password"} />
           </label>
           <ErrorNote error={error} />
-          <button className="btn primary block" disabled={busy}>
+          <button ref={submitRef} className="btn primary block" disabled={busy}>
             {busy ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
           </button>
         </form>
@@ -79,6 +97,21 @@ export default function Login() {
           )}
         </p>
         <p className="fine">Teachers and administrators receive their accounts from the university administrator.</p>
+        {demo.length > 0 && (
+          <div className="demo-logins">
+            <p className="demo-label">Demo accounts <span className="fine">(for testing and demos)</span></p>
+            <div className="demo-buttons">
+              {demo.map((a) => (
+                <button key={a.role} type="button" className={`demo-btn ${email === a.email ? "on" : ""}`}
+                        onClick={() => fill(a)} aria-label={`Fill in the ${ROLE_LABEL[a.role]} demo account`}>
+                  <strong>{ROLE_LABEL[a.role]}</strong>
+                  <span>{a.name}</span>
+                </button>
+              ))}
+            </div>
+            <p className="fine">Fills in the email and password; then press Sign in.</p>
+          </div>
+        )}
       </section>
     </div>
   );

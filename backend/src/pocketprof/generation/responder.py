@@ -36,6 +36,8 @@ from .openai_compat import OpenAICompatClient
 
 log = logging.getLogger("pocketprof.generation.responder")
 
+REVEAL_MODE = "reveal"   # stored as the mode of the student's "show me the full answer" turn (M7)
+
 NOT_COVERED = ("I couldn't find this in the class material on Google Classroom. It may not have been posted "
                "yet, so please check with your teacher.")
 SMALL_TALK = re.compile(r"^\s*(hi+|hello+|hey+|salam|assalam[- ]?o?[- ]?alaikum|good (morning|afternoon|evening)|"
@@ -74,6 +76,7 @@ class ChatResponder:
     def __init__(self, db: Session, course: Course, user: User, *, arm: RunConfig | None = None):
         self.db, self.course, self.user = db, course, user
         self.arm = arm or load_arm(course.active_arm)
+        self._reveal = False
 
     # ----- threads (FR-16) -----
 
@@ -100,15 +103,35 @@ class ChatResponder:
 
     # ----- the main scenario -----
 
+    def _revealed_question(self, conv: Conversation) -> str:
+        """The question a reveal asks for in full: the thread's last real question (M7, UC-02 6a)."""
+        q = self.db.scalar(select(Message.content).where(Message.conversation_id == conv.id, Message.role == "user",
+                                                         Message.mode.is_distinct_from(REVEAL_MODE)).order_by(Message.id.desc()))
+        if q is None:
+            from ..core.errors import bad_request
+            raise bad_request("There is no earlier question in this conversation to answer in full.")
+        return q
+
     def respond(self, question: str, *, thread_id: int | None = None, mode: str | None = None,
-                stop: threading.Event | None = None) -> Iterator[Event]:
+                stop: threading.Event | None = None, reveal: bool = False) -> Iterator[Event]:
         stop = stop or threading.Event()
         t0 = time.perf_counter()
         mode = mode or self.arm.response.default_mode
+        if reveal and thread_id is None:
+            from ..core.errors import bad_request
+            raise bad_request("A full answer can only be asked for inside a conversation.")
         conv = self._thread(thread_id, question)
         history = self._history(conv)
-        self.db.add(Message(conversation_id=conv.id, role="user", content=question, mode=mode))
+        self._reveal = reveal
+        prompt_mode = mode
+        if reveal:
+            prompt_mode, mode = "reveal", "direct"
+            original = self._revealed_question(conv)
+        self.db.add(Message(conversation_id=conv.id, role="user", content=question,
+                            mode=REVEAL_MODE if reveal else mode))
         self.db.flush()
+        if reveal:
+            question = original
 
         if SMALL_TALK.match(question):
             text = (f"Hi! I'm PocketProf for {self.course.code}. Ask me anything about this class's material: "
@@ -139,8 +162,10 @@ class ChatResponder:
 
         ctx = prompts.CourseContext(self.course.code, self.course.title, self.course.teacher.name)
         brief = isinstance(client, OpenAICompatClient) and client.local
-        system, messages = prompts.build(ctx, mode, history, question, result.hits,
-                                         scope.label if scope.active else None, brief=brief)
+        from ..style.service import style_block  # M5: "" unless the teacher has an active style profile
+        system, messages = prompts.build(ctx, prompt_mode, history, question, result.hits,
+                                         scope.label if scope.active else None, brief=brief,
+                                         style_block=style_block(self.db, self.course, self.arm, question))
         text, buffered, released = "", "", False
         try:
             for piece in client.stream(system, messages, max_tokens=self.arm.generation.max_tokens, stop=stop):
@@ -216,7 +241,8 @@ class ChatResponder:
                       citations=records, outcome=outcome, latency_ms=latency, model=model)
         self.db.add(msg)
         conv.updated_at = now_utc()
-        if self.user.role == "student":  # teachers previewing their own course do not skew the signal
+        # Teachers previewing their own course do not skew the signal, and a reveal is not a new question.
+        if self.user.role == "student" and not self._reveal:
             # Week and topic come from the material that answered; a refused question has none (the nearest
             # passage is, by definition, not about it).
             grounded = outcome == "answered" and hits

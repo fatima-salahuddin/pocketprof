@@ -8,9 +8,12 @@ import type { Role } from "./lib/types";
 import Admin from "./pages/Admin";
 import Chat from "./pages/Chat";
 import Login from "./pages/Login";
+import Notes from "./pages/Notes";
+import Practice from "./pages/Practice";
 import StudentCourses from "./pages/StudentCourses";
 import TeacherCourse from "./pages/TeacherCourse";
 import TeacherHome from "./pages/TeacherHome";
+import TeacherStyle from "./pages/TeacherStyle";
 import "./styles.css";
 
 /** Screens are only navigation: every API call they make is authorised again on the server (SDS 7.2). */
@@ -38,7 +41,10 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/login" element={<Login />} />
           <Route path="/courses" element={<Guard roles={["student"]}><StudentCourses /></Guard>} />
           <Route path="/courses/:courseId" element={<Guard roles={["student", "teacher", "admin"]}><Chat /></Guard>} />
+          <Route path="/courses/:courseId/notes" element={<Guard roles={["student", "teacher", "admin"]}><Notes /></Guard>} />
+          <Route path="/courses/:courseId/practice" element={<Guard roles={["student"]}><Practice /></Guard>} />
           <Route path="/teacher" element={<Guard roles={["teacher"]}><TeacherHome /></Guard>} />
+          <Route path="/teacher/style" element={<Guard roles={["teacher"]}><TeacherStyle /></Guard>} />
           <Route path="/teacher/courses/:courseId" element={<Guard roles={["teacher", "admin"]}><TeacherCourse /></Guard>} />
           <Route path="/admin" element={<Guard roles={["admin"]}><Admin /></Guard>} />
           <Route path="*" element={<Home />} />
