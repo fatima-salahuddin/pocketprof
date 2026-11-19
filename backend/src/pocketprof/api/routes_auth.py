@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..access import accounts
@@ -49,6 +50,22 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     response.delete_cookie(COOKIE, path="/api/v1/auth")
     response.status_code = 204
     return response
+
+
+@router.get("/demo-accounts")
+def demo_accounts(db: Session = Depends(get_db)):
+    """The seed accounts for the sign-in page's quick-fill buttons, in development and demo only. They are
+    test accounts whose password is the development SEED_PASSWORD; a pilot never returns them."""
+    s = get_settings()
+    if not s.show_demo_logins:
+        return []
+    from ..seed import ACCOUNTS
+    out = []
+    for email, _, role in ACCOUNTS:
+        u = db.scalar(select(User).where(User.email == email))
+        if u is not None and u.is_active and u.role == role:
+            out.append({"role": role, "name": u.name, "email": email, "password": s.seed_password})
+    return out
 
 
 @router.post("/signup", response_model=TokenOut, status_code=201)

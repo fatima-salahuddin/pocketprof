@@ -17,7 +17,7 @@ from . import runner
 KEYS = ["n", "decision_accuracy", "refusal_precision", "refusal_recall", "refusal_f1", "unsupported_answer_rate",
         "false_refusal_rate", "context_recall_at_k", "context_precision_at_k", "scoped_correctness",
         "citation_presence", "citation_support", "retrieval_ms_p50", "retrieval_ms_p95", "end_to_end_ms_p50",
-        "end_to_end_ms_p95"]
+        "end_to_end_ms_p95", "response_mode", "n_worked_answered", "solution_disclosure_rate", "leak_rate"]
 
 
 def _print_metrics(m: dict) -> None:

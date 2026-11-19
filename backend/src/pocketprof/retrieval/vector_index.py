@@ -120,6 +120,16 @@ class VectorIndex:
             self.client.delete(name, points_selector=models.FilterSelector(filter=models.Filter(must=[
                 models.FieldCondition(key="material_id", match=models.MatchValue(value=material_id))])), wait=True)
 
+    def delete_where(self, name: str, key: str, value: Any) -> None:
+        """Delete every point whose payload `key` equals `value`. Use this rather than drop() + re-create to
+        empty a collection: in embedded mode a re-created collection of the same name can bring back the
+        old points."""
+        with self._write_lock:
+            if not self.client.collection_exists(name):
+                return
+            self.client.delete(name, points_selector=models.FilterSelector(filter=models.Filter(must=[
+                models.FieldCondition(key=key, match=models.MatchValue(value=value))])), wait=True)
+
     def set_material_payload(self, name: str, material_id: int, payload: dict[str, Any]) -> None:
         with self._write_lock:
             if not self.client.collection_exists(name):

@@ -20,7 +20,8 @@ export function TopBar({ children }: { children?: ReactNode }) {
       <Brand />
       <nav className="topnav" aria-label="Main">
         {user?.role === "student" && <NavLink to="/courses">My classes</NavLink>}
-        {user?.role === "teacher" && <NavLink to="/teacher">My classes</NavLink>}
+        {user?.role === "teacher" && <NavLink to="/teacher" end>My classes</NavLink>}
+        {user?.role === "teacher" && <NavLink to="/teacher/style">Teaching style</NavLink>}
         {user?.role === "admin" && <NavLink to="/admin">Administration</NavLink>}
         {children}
       </nav>
@@ -98,4 +99,24 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[] = []) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
   return { data, error, reload: () => setTick((t) => t + 1), setData };
+}
+
+/** The tabs of one class: ask (chat), notes (M3) and practice (M4). Staff manage practice on the course page. */
+export function CourseNav({ courseId, active }: { courseId: number; active: "ask" | "notes" | "practice" }) {
+  const { user } = useAuth();
+  const staff = user?.role === "teacher" || user?.role === "admin";
+  const items: [string, string, string][] = [
+    ["ask", "Ask", `/courses/${courseId}`],
+    ["notes", "Notes", `/courses/${courseId}/notes`],
+    staff ? ["practice", "Manage class", `/teacher/courses/${courseId}`] : ["practice", "Practice", `/courses/${courseId}/practice`],
+  ];
+  return (
+    <nav className="course-nav" aria-label="This class">
+      {items.map(([k, label, to]) => (
+        <Link key={k} to={to} className={active === k ? "on" : ""} aria-current={active === k ? "page" : undefined}>
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
 }

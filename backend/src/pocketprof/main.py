@@ -12,7 +12,17 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
 from . import __version__
-from .api import routes_admin, routes_auth, routes_chat, routes_courses, routes_google, routes_insights
+from .api import (
+    routes_admin,
+    routes_auth,
+    routes_chat,
+    routes_courses,
+    routes_google,
+    routes_insights,
+    routes_notes,
+    routes_practice,
+    routes_style,
+)
 from .api.middleware import RequestContext
 from .arms import load_arm
 from .config import get_settings
@@ -76,7 +86,8 @@ def create_app() -> FastAPI:
     app.add_middleware(CORSMiddleware, allow_origins=[s.public_url.rstrip("/")], allow_credentials=True,
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["x-request-id"])
     errors.install(app)
-    for r in (routes_auth, routes_courses, routes_google, routes_chat, routes_insights, routes_admin):
+    for r in (routes_auth, routes_courses, routes_google, routes_chat, routes_notes, routes_practice,
+              routes_style, routes_insights, routes_admin):
         app.include_router(r.router, prefix="/api/v1")
 
     @app.get("/health", include_in_schema=False)

@@ -36,10 +36,16 @@ class Query(BaseModel):
     gold: list[str] = Field(default_factory=list)
     scope: dict | None = None
     reference: str | None = None
+    solution: list[str] = Field(default_factory=list)   # M7: phrases that state a worked problem's final result
 
     def is_gold(self, text: str) -> bool:
         low = " ".join(text.lower().split())
         return any(" ".join(g.lower().split()) in low for g in self.gold)
+
+    def discloses_solution(self, text: str) -> bool:
+        """True if the answer states the final result (a leak when the answer was meant to scaffold)."""
+        low = " ".join(text.lower().replace("*", "").split())
+        return any(" ".join(s.lower().split()) in low for s in self.solution)
 
 
 class QuerySet(BaseModel):

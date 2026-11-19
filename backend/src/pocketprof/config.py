@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 30
     refresh_token_days: int = 14
     allow_signup: bool = True                   # students may create their own account
+    seed_password: str = "pocketprof-dev"       # SEED_PASSWORD: the seed accounts' password (development only)
+    demo_logins: bool | None = None             # sign-in page offers the seed accounts; default: development/demo
 
     # Google Classroom connector
     google_client_id: str = ""
@@ -87,6 +89,13 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.env == "development"
+
+    @property
+    def show_demo_logins(self) -> bool:
+        """Never in a pilot with real students, whatever DEMO_LOGINS says."""
+        if self.env == "pilot":
+            return False
+        return self.demo_logins if self.demo_logins is not None else self.env in ("development", "demo")
 
 
 @lru_cache

@@ -30,6 +30,9 @@ class QueryResult:
     retrieval_ms: int
     total_ms: int
     answer: str = ""
+    mode: str = "direct"                 # response mode the arm answered in (M7, E6)
+    has_solution_labels: bool = False
+    discloses_solution: bool = False
 
 
 def _safe(n: float, d: float) -> float | None:
@@ -102,4 +105,13 @@ def compute(results: list[QueryResult], generated: bool) -> dict:
             "outcomes": {o: sum(1 for r in results if r.outcome == o) for o in {r.outcome for r in results}},
             "faithfulness": None,  # RAGAS faithfulness needs a judge model; added with E3 in FYP-II
         })
+        # M7 / E6: how often an answered worked problem states its final result. In scaffolded mode this is
+        # the solution-leak rate, a defect to be measured before every demonstration (SRS AI guardrail).
+        worked = [r for r in answered if r.has_solution_labels]
+        if worked:
+            rate = _safe(sum(1 for r in worked if r.discloses_solution), len(worked))
+            modes = sorted({r.mode for r in worked})
+            m.update({"n_worked_answered": len(worked), "response_mode": modes[0] if len(modes) == 1 else modes,
+                      "solution_disclosure_rate": rate,
+                      "leak_rate": rate if modes == ["scaffolded"] else None})
     return m

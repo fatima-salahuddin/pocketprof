@@ -64,3 +64,55 @@ def pytest_sessionfinish(session, exitstatus):
     from pocketprof.retrieval import vector_index
     vector_index._close()
     shutil.rmtree(_TMP, ignore_errors=True)
+
+
+# ----- shared by the phase-2 tests (M3 notes, M4 practice, M5 style) -----
+
+class FakeLLM:
+    """Stands in for the model: deterministic, and records every request."""
+    name = "fake-llm"
+
+    def __init__(self, answer: str):
+        self.answer, self.calls = answer, []
+
+    def stream(self, system, messages, *, max_tokens, stop):
+        self.calls.append((system, messages))
+        for i in range(0, len(self.answer), 7):
+            yield self.answer[i:i + 7]
+
+
+class BrokenLLM:
+    name = "broken"
+
+    def stream(self, *a, **k):
+        raise ConnectionError("down")
+        yield  # pragma: no cover
+
+
+def _signup(client, email: str, name: str, password: str = "phase-two-pw") -> dict:
+    r = client.post("/api/v1/auth/signup", json={"email": email, "name": name, "password": password})
+    assert r.status_code in (200, 201), r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+@pytest.fixture(scope="session")
+def peer(client, seeded):
+    """A second student enrolled in the sample class."""
+    h = _signup(client, "peer@pocketprof.local", "Peer Student")
+    assert client.post("/api/v1/courses/join", headers=h, json={"join_code": "sample-ds"}).status_code == 200
+    return h
+
+
+@pytest.fixture(scope="session")
+def outsider(client):
+    """A student who has not joined the sample class."""
+    return _signup(client, "outsider@pocketprof.local", "Outside Student")
+
+
+@pytest.fixture(scope="session")
+def other_teacher(client, admin):
+    """A teacher who does not own the sample class."""
+    r = client.post("/api/v1/admin/users", headers=admin, json={"email": "t3@pocketprof.local", "name": "Teacher Three",
+                                                                "role": "teacher", "password": "teacher-three-pw"})
+    assert r.status_code == 201, r.text
+    return login(client, "t3@pocketprof.local", "teacher-three-pw")

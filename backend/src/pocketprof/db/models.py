@@ -221,6 +221,158 @@ class Message(TimestampMixin, Base):
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
 
 
+# ---------- notes (M3) ----------
+
+class Note(TimestampMixin, Base):
+    """Generated study notes (M3, FR-8). Content is stored so notes can be reopened and exported with
+    their citations intact, even after the material changes."""
+    __tablename__ = "notes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
+    selection: Mapped[dict[str, Any]] = mapped_column(JSON)     # {"week": 5} | {"topic": ...} | {"material_id": 7}
+    scope_label: Mapped[str] = mapped_column(String(200))       # "Week 5", "Topic: Hashing", "File: L5.pptx"
+    title: Mapped[str] = mapped_column(String(200))
+    sections: Mapped[list[Any]] = mapped_column(JSON)           # [{"heading", "body", "citations": [n...]}]
+    sources: Mapped[list[Any]] = mapped_column(JSON)            # citation records, numbered 1..k
+    outcome: Mapped[str] = mapped_column(String(16))            # generated | refused | fallback
+    notice: Mapped[str | None] = mapped_column(String(500))
+    truncated: Mapped[bool] = mapped_column(Boolean, default=False)
+    model: Mapped[str | None] = mapped_column(String(160))
+    config_hash: Mapped[str] = mapped_column(String(64))        # which arm produced it (provenance)
+    prompt_version: Mapped[str] = mapped_column(String(32))
+    __table_args__ = (CheckConstraint("outcome IN ('generated','refused','fallback')", name="ck_notes_outcome"),
+                      Index("ix_notes_user_course", "user_id", "course_id"))
+
+
+# ---------- practice (M4) ----------
+
+ITEM_STATES = ("draft", "validated", "released", "rejected", "retired")
+ITEM_KINDS = ("mcq", "tf", "short")
+
+
+class PracticeItem(TimestampMixin, Base):
+    """A generated practice item and its lifecycle (SDS 8.4, Figure 14):
+        DRAFT -> VALIDATED (teacher approves) -> RELEASED (its topic has been delivered)
+        DRAFT -> REJECTED (teacher, with a reason);  any -> RETIRED (source file changed or withdrawn)
+    Students only ever see RELEASED items (FR-17). `file_hash` pins the version of the material the item
+    was generated from, so a replaced file retires its items."""
+    __tablename__ = "practice_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+    material_id: Mapped[int | None] = mapped_column(ForeignKey("materials.id", ondelete="SET NULL"))
+    chunk_id: Mapped[str] = mapped_column(String(120))
+    file_hash: Mapped[str | None] = mapped_column(String(64))
+    topic: Mapped[str | None] = mapped_column(String(200))
+    week: Mapped[int | None] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(8))                 # mcq | tf | short
+    question: Mapped[str] = mapped_column(Text)
+    options: Mapped[list[Any] | None] = mapped_column(JSON)      # mcq: four strings, shown as A-D
+    answer: Mapped[str] = mapped_column(Text)                    # mcq: A-D; tf: true|false; short: model answer
+    explanation: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[dict[str, Any]] = mapped_column(JSON)         # citation record of the chunk (FR-17)
+    status: Mapped[str] = mapped_column(String(12), default="draft")
+    reject_reason: Mapped[str | None] = mapped_column(String(500))
+    edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    validated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retired_reason: Mapped[str | None] = mapped_column(String(200))
+    model: Mapped[str | None] = mapped_column(String(160))
+    config_hash: Mapped[str] = mapped_column(String(64))
+    prompt_version: Mapped[str] = mapped_column(String(32))
+    __table_args__ = (
+        CheckConstraint("status IN ('draft','validated','released','rejected','retired')", name="ck_items_status"),
+        CheckConstraint("kind IN ('mcq','tf','short')", name="ck_items_kind"),
+        CheckConstraint("status NOT IN ('validated','released') OR validated_by IS NOT NULL",
+                        name="ck_items_validated_by"),
+        Index("ix_practice_items_course_status_topic", "course_id", "status", "topic"),
+    )
+
+
+class PracticeSchedule(Base):
+    """One student's Leitner state for one released item (SDS 4.5): box 1-5, next due date. Keyed by the
+    per-course pseudonym, never the user ID (C-8)."""
+    __tablename__ = "practice_schedule"
+    item_id: Mapped[int] = mapped_column(ForeignKey("practice_items.id", ondelete="CASCADE"), primary_key=True)
+    student_ref: Mapped[str] = mapped_column(String(16), primary_key=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+    box: Mapped[int] = mapped_column(Integer, default=1)
+    next_due: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    n_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    __table_args__ = (CheckConstraint("box BETWEEN 1 AND 5", name="ck_schedule_box"),
+                      Index("ix_practice_schedule_ref_due", "student_ref", "next_due"))
+
+
+class PracticeAttempt(Base):
+    """Every attempt, under the pseudonym. The source of truth for mastery and for the cohort signal."""
+    __tablename__ = "practice_attempts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("practice_items.id", ondelete="CASCADE"), index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+    student_ref: Mapped[str] = mapped_column(String(16))
+    topic: Mapped[str | None] = mapped_column(String(200))
+    week: Mapped[int | None] = mapped_column(Integer)
+    answer: Mapped[str] = mapped_column(Text)
+    correct: Mapped[bool] = mapped_column(Boolean)
+    self_marked: Mapped[bool] = mapped_column(Boolean, default=False)   # short answers: the student marks
+    box_before: Mapped[int] = mapped_column(Integer)
+    box_after: Mapped[int] = mapped_column(Integer)
+    next_due: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (Index("ix_practice_attempts_course_ref_topic", "course_id", "student_ref", "topic"),)
+
+
+class Mastery(Base):
+    """Recency-weighted accuracy per student and topic (SDS 4.5). A cache recomputed from practice_attempts
+    on every attempt; visible to the student only (C-8)."""
+    __tablename__ = "mastery"
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True)
+    student_ref: Mapped[str] = mapped_column(String(16), primary_key=True)
+    topic: Mapped[str] = mapped_column(String(200), primary_key=True)
+    estimate: Mapped[float] = mapped_column(Float)
+    n_attempts: Mapped[int] = mapped_column(Integer)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                 onupdate=func.now())
+    __table_args__ = (CheckConstraint("estimate >= 0 AND estimate <= 1", name="ck_mastery_estimate"),)
+
+
+# ---------- style (M5) ----------
+
+class StyleProfile(TimestampMixin, Base):
+    """A teacher's explicit style rules (FR-11). Rules are plain sentences the teacher can read and edit;
+    nothing is used in generation until the teacher activates the profile."""
+    __tablename__ = "style_profiles"
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(12), default="draft")     # draft | active | off
+    rules: Mapped[list[Any]] = mapped_column(JSON, default=list)         # [{"id", "text", "origin", "enabled"}]
+    calibration: Mapped[list[Any]] = mapped_column(JSON, default=list)   # [{"prompt_id", "prompt", "answer"}]
+    measures: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # deterministic features behind the rules
+    model: Mapped[str | None] = mapped_column(String(160))
+    config_hash: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                 onupdate=func.now())
+    __table_args__ = (CheckConstraint("status IN ('draft','active','off')", name="ck_style_status"),)
+
+
+class StyleExemplar(TimestampMixin, Base):
+    """One example of how the teacher explains: a calibration answer, or a passage mined from their own
+    material. Only approved exemplars are indexed in the teacher's style collection (SDS Table 4)."""
+    __tablename__ = "style_exemplars"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    origin: Mapped[str] = mapped_column(String(12))                     # calibration | material
+    prompt: Mapped[str | None] = mapped_column(Text)                    # the calibration prompt it answers
+    text: Mapped[str] = mapped_column(Text)
+    source_ref: Mapped[str | None] = mapped_column(String(300))          # "file, location" for mined passages
+    status: Mapped[str] = mapped_column(String(12), default="pending")  # pending | approved | rejected
+    __table_args__ = (CheckConstraint("status IN ('pending','approved','rejected')", name="ck_exemplar_status"),
+                      CheckConstraint("origin IN ('calibration','material')", name="ck_exemplar_origin"))
+
+
 class QueryLog(Base):
     """Pseudonymous usage log feeding the cohort signal (FR-19). No user_id column by design (C-8)."""
     __tablename__ = "query_log"

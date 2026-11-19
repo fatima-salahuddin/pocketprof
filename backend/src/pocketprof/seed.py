@@ -8,7 +8,6 @@ Account passwords come from SEED_PASSWORD (default for development only: see .en
 from __future__ import annotations
 
 import argparse
-import os
 
 from sqlalchemy import select
 
@@ -37,7 +36,7 @@ def _user(db, email: str, name: str, role: str, password: str) -> tuple[User, bo
 
 
 def seed(reset: bool = False) -> int:
-    password = os.getenv("SEED_PASSWORD", "pocketprof-dev")
+    password = get_settings().seed_password  # SEED_PASSWORD, from the environment or .env
     upgrade()
     with session_scope() as db:
         users = {}

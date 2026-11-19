@@ -146,3 +146,22 @@ export async function streamChat(courseId: number, body: object, signal: AbortSi
     }
   }
 }
+
+// ----- file downloads (PDF export, FR-9) -----
+
+/** POSTs with the bearer token and saves the response as a file. A plain link cannot carry the token,
+ * which stays private to this module. */
+export async function download(path: string, body: unknown, fallbackName: string): Promise<void> {
+  const res = await raw(path, { method: "POST", body: JSON.stringify(body) });
+  if (!res.ok) throw new ApiError(await toProblem(res));
+  const blob = await res.blob();
+  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}

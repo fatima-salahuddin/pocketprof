@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 # A format check only: institutional and internal domains (e.g. .local) must be accepted.
 Email = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, max_length=255,
@@ -128,6 +128,8 @@ class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     thread_id: int | None = None
     mode: Literal["direct", "scaffolded"] | None = None
+    reveal: bool = Field(default=False, description="M7: give the full answer to the thread's last question "
+                                                     "after a scaffolded reply (SRS UC-02 6a)")
 
 
 class MessageOut(ORM):
@@ -192,3 +194,139 @@ class EvalRunIn(BaseModel):
     arm: str = "shipped-v1"
     experiment: str = "regression"
     generate: bool = True
+
+
+# ----- notes and export (M3) -----
+
+class NotesIn(BaseModel):
+    week: int | None = Field(default=None, ge=1, le=30)
+    lecture: int | None = Field(default=None, ge=1, le=200)
+    topic: str | None = Field(default=None, min_length=2, max_length=200)
+    material_id: int | None = None
+
+    @model_validator(mode="after")
+    def exactly_one(self) -> NotesIn:
+        given = [k for k in ("week", "lecture", "topic", "material_id") if getattr(self, k) is not None]
+        if len(given) != 1:
+            raise ValueError("choose exactly one of week, lecture, topic or material_id")
+        return self
+
+
+class NoteSummary(ORM):
+    id: int
+    course_id: int
+    title: str
+    scope_label: str
+    outcome: str
+    created_at: datetime
+
+
+class NoteOut(NoteSummary):
+    selection: dict
+    sections: list
+    sources: list
+    notice: str | None
+    truncated: bool
+    model: str | None
+
+
+class NotesOptionsOut(BaseModel):
+    weeks: list[int]
+    lectures: list[int]
+    topics: list[str]
+    files: list[dict]
+
+
+class ExportIn(BaseModel):
+    kind: Literal["thread", "notes", "paper"]
+    ref: int = Field(description="thread id, note id, or course id for a practice paper")
+    topic: str | None = Field(default=None, max_length=200, description="paper only: limit to one topic")
+
+
+# ----- practice (M4) -----
+
+PracticeKind = Literal["mcq", "tf", "short"]
+
+
+class PracticeGenerateIn(BaseModel):
+    week: int | None = Field(default=None, ge=1, le=30)
+    topic: str | None = Field(default=None, min_length=2, max_length=200)
+    material_id: int | None = None
+    n: int = Field(default=5, ge=1, le=20)
+    kinds: list[PracticeKind] = Field(default_factory=lambda: ["mcq", "tf", "short"], min_length=1)
+
+    @model_validator(mode="after")
+    def exactly_one(self) -> PracticeGenerateIn:
+        given = [k for k in ("week", "topic", "material_id") if getattr(self, k) is not None]
+        if len(given) != 1:
+            raise ValueError("choose exactly one of week, topic or material_id")
+        return self
+
+
+class PracticeItemOut(ORM):
+    """The teacher's view of an item: everything, including the answer and the source it came from."""
+    id: int
+    course_id: int
+    kind: str
+    question: str
+    options: list | None
+    answer: str
+    explanation: str | None
+    topic: str | None
+    week: int | None
+    source: dict
+    status: str
+    reject_reason: str | None
+    edited: bool
+    retired_reason: str | None
+    created_at: datetime
+    validated_at: datetime | None
+    released_at: datetime | None
+    model: str | None
+    stats: dict | None = None
+
+
+class PracticeReviewIn(BaseModel):
+    action: Literal["approve", "reject", "retire"]
+    reason: str | None = Field(default=None, max_length=500)
+    question: str | None = Field(default=None, max_length=800)
+    options: list[str] | None = Field(default=None, min_length=4, max_length=4)
+    answer: str | None = Field(default=None, max_length=1500)
+    explanation: str | None = Field(default=None, max_length=800)
+
+
+class AttemptIn(BaseModel):
+    answer: str = Field(default="", max_length=2000)
+    self_correct: bool | None = Field(default=None, description="short answers: did your answer match?")
+
+
+# ----- style (M5) -----
+
+class CalibrationAnswer(BaseModel):
+    prompt_id: str = Field(max_length=32)
+    answer: str = Field(default="", max_length=4000)
+
+
+class CalibrationIn(BaseModel):
+    answers: list[CalibrationAnswer] = Field(max_length=20)
+
+
+class StyleRuleIn(BaseModel):
+    id: str | None = Field(default=None, max_length=16)
+    text: str = Field(max_length=400)
+    enabled: bool = True
+
+
+class StyleUpdateIn(BaseModel):
+    rules: list[StyleRuleIn] | None = Field(default=None, max_length=12)
+    status: Literal["draft", "active", "off"] | None = None
+
+
+class ExemplarReviewIn(BaseModel):
+    status: Literal["approved", "rejected", "pending"] | None = None
+    text: str | None = Field(default=None, max_length=4000)
+
+
+class StylePreviewIn(BaseModel):
+    course_id: int
+    question: str = Field(min_length=3, max_length=500)

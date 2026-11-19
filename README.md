@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose">
-  <img src="https://img.shields.io/badge/tests-59-0D9488?style=flat-square" alt="59 tests">
+  <img src="https://img.shields.io/badge/tests-157-0D9488?style=flat-square" alt="157 tests">
   <img src="https://img.shields.io/badge/FAST--NUCES-FYP_2026-2563EB?style=flat-square" alt="FAST-NUCES FYP 2026">
 </p>
 
@@ -32,18 +32,22 @@ announcements), with a citation to the exact slide, page or post. When the mater
 question, PocketProf says so instead of answering from general knowledge.
 
 FAST-NUCES Karachi, Final Year Project, Fall 2026. This repository is release 1.0 (phase 1) of the system
-specified in the SRS v1.0 and SDS v1.0.
+specified in the SRS v1.0 and SDS v1.0, plus phase 2's M3, M4, M5 and M7 (see
+[docs/PHASE2_HANDOFF.md](docs/PHASE2_HANDOFF.md)).
 
-## What is in phase 1
+## What is built
 
 | Module (SDS 3.3) | Status | Where |
 |---|---|---|
 | **M1** Provisioning and ingestion | Done | `backend/src/pocketprof/ingestion/` |
 | **M2** Grounded assistant (retrieval, scope, citations, threads) | Done | `retrieval/`, `generation/` |
-| **M7** Interaction design (direct / step-by-step mode) | Done (prompt modes; E6 not yet run) | `generation/prompts.py` |
+| **M3** Notes and export (notes per week/topic/file; PDF of threads, notes, practice papers) | Done | `generation/notes.py`, `exports/` |
+| **M4** Practice (generation, teacher validation, Leitner spacing, mastery) | Done | `practice/` |
+| **M5** Style adaptation (calibration, rules, exemplars) | Done (E4 study not yet run) | `style/` |
+| **M7** Interaction design (direct / step-by-step, full-answer reveal, leak metric) | Done (E6 piloted) | `generation/prompts.py`, `responder.py` |
 | **M8** Access control | Done | `access/` |
-| **M9** Evaluation harness | Done (harness, metrics, `ds-v1` query set) | `evaluation/`, `eval/` |
-| M3 Notes and export, M4 Practice, M5 Style, M6 Analytics/CQI | Phase 2 | — |
+| **M9** Evaluation harness | Done (harness, metrics, `ds-v1` and `modes-v1` query sets) | `evaluation/`, `eval/` |
+| M6 Analytics/CQI | Not started | — |
 
 ## How it works
 
@@ -100,18 +104,19 @@ Seed accounts are `admin@`, `teacher@` and `student@pocketprof.local`, with the 
 **Google Classroom.** In Google Cloud Console, add the redirect URI
 `http://localhost:8000/api/v1/google/callback` to the OAuth client (the prototype used
 `/api/google/callback`). A teacher connects on *My classes* and links a class by its class code; students
-join with the same code.
+join with the same code. Step by step: [docs/GOOGLE_CLASSROOM_SETUP.md](docs/GOOGLE_CLASSROOM_SETUP.md).
 
 **Generation arm.** `GEN_PROVIDER=anthropic` uses Claude through the official SDK (default model
 `claude-opus-5-5`); `GEN_PROVIDER=openai` with `GEN_BASE_URL` uses any OpenAI-compatible endpoint
 (OpenRouter, Gemini, local Ollama). With no model configured the assistant still retrieves and shows the
-matching passages.
+matching passages. The free OpenRouter model used for the baseline below was retired on 22 Oct 2026; on
+10 Nov 2026 `nvidia/nemotron-3.5-super-vl:free` worked (see the phase-2 handoff, section 2).
 
 ## Tests and evaluation
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q            # 59 tests: units, API, authorisation matrix, isolation
+.venv/Scripts/python -m pytest -q            # 157 tests: units, API, authorisation matrix, isolation, phase 2
 .venv/Scripts/ruff check src tests
 .venv/Scripts/python -m pocketprof.evaluation run --course 1 --split all             # full pipeline
 .venv/Scripts/python -m pocketprof.evaluation run --course 1 --split all --retrieval-only
@@ -157,7 +162,10 @@ backend/src/pocketprof/
   access/                  M8: JWT + rotating refresh tokens, Argon2id, AccessGuard, audit log
   ingestion/               M1: Classroom connector, uploads, parsers, chunker, calendar, ledger, ProvisioningJob
   retrieval/               M2: embedder, per-course VectorIndex, QueryScoper, Retriever
-  generation/              M2/M7: LLMClient (Claude, OpenAI-compatible), PromptBuilder, citations, ChatResponder
+  generation/              M2/M3/M7: LLMClient, PromptBuilder, citations, ChatResponder, NotesGenerator
+  exports/                 M3: PDF rendering and export builders (thread, notes, practice paper)
+  practice/                M4: PracticeGenerator, lifecycle, SpacingPolicy, MasteryTracker
+  style/                   M5: StyleService (calibration, rules, exemplars, per-request STYLE block)
   evaluation/              M9: query sets, metrics, ExperimentRunner, CLI
   api/                     /api/v1 routes, RFC 7807 errors, request IDs, metrics, rate limit
   db/                      SQLAlchemy models and Alembic migrations
@@ -183,3 +191,7 @@ deploy/                    Dockerfiles, nginx, Caddy
 7. **Embedding model** in development is bge-small-en-v1.5 (384-d); bge-base (768-d) remains the target arm.
 8. **Teacher insights** list recent questions without identity, and suppress topic aggregates below the
    minimum cohort (C-8); the full cohort signal and CQI report are M6 (phase 2).
+
+Phase 2 adds items 9 to 14 (short answers self-marked, practice release and retirement on read, style rules
+in the database, versioned mode prompts, weeks from the teacher's labels, free-text note topics): see
+[docs/PHASE2_HANDOFF.md](docs/PHASE2_HANDOFF.md), section 6.
